@@ -18,8 +18,8 @@ app.use(cookieParser());
 
 
 // 포트설정
-app.listen(5000, function(){
-	console.log('Connect 5000 port');
+app.listen(3000, function(){
+	console.log('Connect 3000 port');
 });
 
 
@@ -38,15 +38,15 @@ fs.readdirSync(__dirname + '/routes/').forEach(function (fileName) {
 // html 파일 응답하기
 // url : http://43.202.80.70:5000/
 console.log('__dirname :', __dirname);
-app.use(express.static(path.join(__dirname, '../client/build'))); // 이게 있어야 특정 폴더의 파일들 전송가능
-app.get('/react', function (요청, 응답) {
-  응답.sendFile(path.join(__dirname, '../client/build/index.html'));
+app.use(express.static(path.join(__dirname, '../remember_front/build'))); // 이게 있어야 특정 폴더의 파일들 전송가능
+app.get('/', function (요청, 응답) {
+  응답.sendFile(path.join(__dirname, '../remember_front/build/index.html'));
 });
 
 // 리액트라우터 사용하기 (주의 - 최하단에 두기)
-// app.get('*', function (요청, 응답) { // *뜻 : 모든 문자
-// 	응답.sendFile(path.join(__dirname, '../client/build/index.html')); // 고객이 URL란에 아무거나 입력하면 리액트 프로젝트 보내주세요-라는 뜻
-// });
+app.get('*', function (요청, 응답) { // *뜻 : 모든 문자
+	응답.sendFile(path.join(__dirname, '../remember_front/build/index.html')); // 고객이 URL란에 아무거나 입력하면 리액트 프로젝트 보내주세요-라는 뜻
+});
 
 module.exports = app;
 
