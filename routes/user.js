@@ -4,6 +4,9 @@ const router = express.Router();
 const userMngDB = require('../model/userMng');
 const resCode = require('../util/resCode');
 const jwt = require('jsonwebtoken');
+const app = express();
+
+
 let message;
 /** RESTful API 엔드포인트
  * 명사 사용
@@ -16,6 +19,377 @@ let message;
 // TODO SNS로그인 프론트에서 SNS API로 요청하는지 확인하기/ 백엔드에서 DB저장만 하면 되는지 확인하기
 // TODO 필요한 파라미터 API마다 기입하기 (후순위)
 
+
+
+
+/** 회원 정보 조회 API */
+router.use('/info/:user_email?', userMngDB.authMiddleware)
+router.get('/info/:user_email?', async (req, res) => {
+
+  // API 정보
+  const apiName = '회원 정보 조회 API';
+  console.log(apiName);
+  console.log('req.params %o:', req.params);
+ 
+  // 파라미터값 누락 확인
+  if (!req.params.user_email) {
+    console.log('req.params %o:', req.params);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+    
+  console.log('user.js user is %o:', user);
+
+  // response
+  if (user && user!=1005 && user!=9999) {
+    const plusResult = { user_info: user }; // 원하는 출력 모양을 추가함
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else if (user == 1005) {
+    return resCode.returnResponseCode(res, 1005, apiName, null, null); // 실패(중복)시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
+/** 이메일 중복확인 API */
+router.get('/email/check/:user_email?', async (req, res) => {
+
+  // API 정보
+  const apiName = '이메일 중복확인 API dddd';
+  console.log(apiName);
+  console.log('req.params %o:', req.params);
+ 
+  // 파라미터값 누락 확인
+  if (!req.params.user_email) {
+    console.log('req.params %o:', req.params);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const user = await userMngDB.checkEmail(req.params); 
+  console.log('user %o:', user);
+
+  // response
+  if (user == 2000) {
+    return resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳
+  } else if (user == 1009) {
+    return resCode.returnResponseCode(res, 1009, apiName, null, null); // 실패(중복)시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
+/** SNS 회원탈퇴(카카오, 네이버) API */
+router.post('/leave/sns', async (req, res) => {
+  // API 정보
+  const apiName = 'SNS 회원탈퇴 API';
+  console.log(apiName);
+  console.log('req.body %o:', req.body);
+
+  // 파라미터값 누락 확인
+  if (!req.body.login_sns_type || !req.body.user_email) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  }
+
+  try {
+    // DB에 SNS 회원가입 정보 추가
+    const kakaoId = await userMngDB.leaveSns(req.body);
+    console.log('kakaoId hh %o:', kakaoId);
+
+    if (kakaoId) {
+      return resCode.returnResponseCode(res, 2000, apiName, null, null);
+    } else {
+      return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    }
+  } catch (error) {
+    console.error('에러 발생:', error);
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+});
+
+/** SNS 로그아웃(카카오, 네이버) API */
+router.post('/logout/sns', async (req, res) => {
+  // API 정보
+  const apiName = 'SNS 로그아웃 API';
+  console.log(apiName);
+  console.log('req.body %o:', req.body);
+
+  // 파라미터값 누락 확인
+  if (!req.body.login_sns_type || !req.body.user_email) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  }
+
+  try {
+    // DB에 SNS 회원가입 정보 추가
+    const kakaoId = await userMngDB.logoutSns(req.body);
+    console.log('kakaoId hh %o:', kakaoId);
+
+    if (kakaoId) {
+      return resCode.returnResponseCode(res, 2000, apiName, null, null);
+    } else {
+      return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    }
+  } catch (error) {
+    console.error('에러 발생:', error);
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+});
+
+/** SNS 회원가입(카카오, 네이버) API */
+router.post('/join/sns', async (req, res) => {
+  // API 정보
+  const apiName = 'SNS 회원가입/로그인 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.body.login_sns_type || !req.body.code) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  }
+
+  try {
+    // DB에 SNS 회원가입 정보 추가
+    const user = await userMngDB.addSnsUser(req.body);
+    console.log('user hh %o:', user);
+
+    // 동기적으로 실행하고 싶은 코드
+    const tokens = await userMngDB.signJWT(user);
+    console.log('tokens %o:', tokens);
+
+    if (tokens) {
+      const plusResult = { 
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+        userInfo: user,
+      };
+      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
+    } else {
+      return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    }
+  } catch (error) {
+    console.error('에러 발생:', error);
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+});
+
+/** 일반회원탈퇴 API */
+router.use('/leave', userMngDB.authMiddleware)
+router.post('/leave', async (req, res) => { // 로그인 중인 상태에서 요청이 들어옴
+
+  // API 정보
+  const apiName = '일반회원탈퇴 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.body.user_email) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null); //
+  } 
+
+  // DB
+  const result = await userMngDB.leaveUser(req.body); 
+  console.log('result %o:', result);
+
+  // response
+  if (result == 9999) {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  } else if (result == 1005) { 
+    return resCode.returnResponseCode(res, 1005, apiName, null, null); // O
+  } else {
+    resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳 
+  }
+
+})
+
+/** (비로그인) 비밀번호 임시발급 API */
+router.post('/tempPassword', async (req, res) => { // 비로그인 중인 상태에서 요청이 들어옴
+
+  // API 정보
+  const apiName = '비밀번호 임시발급 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.body.user_email) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null); //
+  } 
+
+  // DB
+  const result = await userMngDB.tempPassword(req.body); 
+  console.log('result %o:', result);
+
+  // response
+  if (result == 9999) {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  } else if (result == 1005) { 
+    return resCode.returnResponseCode(res, 1005, apiName, null, null); 
+  } else if (result == 2009) { 
+    return resCode.returnResponseCode(res, 2009, apiName, null, null); // 실패시 응답받는 곳
+  } else {
+    resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳 
+  }
+
+})
+
+/** (로그인) 비밀번호 변경 API */
+router.use('/changePassword', userMngDB.authMiddleware)
+router.post('/changePassword', async (req, res) => { // 로그인 중인 상태에서 요청이 들어옴
+
+  // API 정보
+  const apiName = '비밀번호 변경 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.body.user_email || !req.body.user_pw) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null); //
+  } 
+
+  // DB
+  const result = await userMngDB.changePassword(req.body); 
+  console.log('result %o:', result);
+
+  // response
+  if (result == 9999) {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  } else if (result == 1005) { 
+    return resCode.returnResponseCode(res, 1005, apiName, null, null); // O
+  } else {
+    resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳 
+  }
+
+})
+
+/** 이메일 인증 API */
+router.post('/email', async (req, res) => {
+
+  // API 정보
+  const apiName = '이메일 인증 API';
+  console.log(apiName);
+
+ 
+  // 파라미터값 누락 확인
+  if (!req.body.user_email) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null); //
+  } 
+
+  // DB
+  const emailVerificationCode = await userMngDB.sendEmail(req.body); 
+  console.log('emailVerificationCode %o:', emailVerificationCode);
+
+  // response
+  if (emailVerificationCode == 9999) {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  } else if (emailVerificationCode == 1005) { 
+    return resCode.returnResponseCode(res, 1005, apiName, null, null); // X
+  } else {
+    const plusResult = { VerificationCode: emailVerificationCode }; // 원하는 출력 모양을 추가함
+    resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳 
+  }
+
+})
+
+/** (JWT발급) 일반회원 로그인 API */
+router.post('/login', async (req, res) => {
+
+  // API 정보
+  const apiName = '일반회원 로그인 API';
+  console.log(apiName);
+ 
+  // 파라미터값 누락 확인
+  if (!req.body.user_email || !req.body.user_pw) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null); //O
+  } 
+
+  // DB
+  const user = await userMngDB.loginUser(req.body); 
+  console.log('user is... %o:', user);
+  
+  if (user != 9999 && user != 1005) { // 회원정보 일치한다면
+    const tokens = await userMngDB.signJWT(user); 
+    console.log('tokens %o:', tokens);
+
+    if (tokens) {
+      const plusResult = { // 원하는 출력 모양을 추가함
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+        userInfo: user
+      }; 
+      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳 
+    } else {
+      return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    }
+  } else {
+    // response
+    if (user == 1005) {
+      return resCode.returnResponseCode(res, 1005, apiName, null, "로그인 실패했습니다."); // 로그인 실패 /O
+    } else {
+      return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    }
+  }
+
+
+
+})
+
+/** 일반 회원가입 API */
+router.post('/join', async (req, res) => {
+
+  // API 정보
+  const apiName = '일반 회원가입 API';
+  console.log(apiName);
+ 
+  // 파라미터값 누락 확인
+  if (!req.body.user_email || !req.body.user_pw) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const user = await userMngDB.addUser(req.body); 
+  console.log('user %o:', user);
+
+  // response
+  if (user == 2000) {
+    // 성공시 응답받는 곳
+    return resCode.returnResponseCode(res, 2000, apiName, null, null);
+  } else if (user == 1005) {
+    return resCode.returnResponseCode(res, 1005, apiName, null, null);
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
+
+// ---------------------- TEST -----------------------
+//tests API
+router.get('/test', async (req, res) => {
+  console.log("test");
+
+    const sql = `select * from USER`;
+    const dbPool = require('../util/dbPool');
+    const connection = dbPool.init();
+  
+    connection.query(sql, (err, rows) => {
+      if (err) {
+        // logger.error(`샘플 에러: \n${JSON.stringify(err, null, 2)}`);
+      } else {
+        message = '회원가입에 성공했습니다.';
+      }
+      
+      res.json({
+        'message': "this is test"
+      });
+    })
+})
 // test) check_token API
 router.get('/test/check_token', (req, res) => {
 	let token = req.headers['token'];
@@ -213,308 +587,4 @@ router.get('/test/token/:email?', async (req, res) => {
 
     })
 })
-
-
-
-/** 회원 정보 조회 API */
-router.use('/info/:user_email?', userMngDB.authMiddleware)
-router.get('/info/:user_email?', async (req, res) => {
-
-  // API 정보
-  const apiName = '회원 정보 조회 API';
-  console.log(apiName);
-  console.log('req.params %o:', req.params);
- 
-  // 파라미터값 누락 확인
-  if (!req.params.user_email) {
-    console.log('req.params %o:', req.params);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null);
-  } 
-
-  // DB
-  const user = await userMngDB.getUser(req.params); 
-  console.log('user.js user is %o:', user);
-
-  // response
-  if (user && user!=1005 && user!=9999) {
-    const plusResult = { user_info: user }; // 원하는 출력 모양을 추가함
-    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
-  } else if (user == 1005) {
-    return resCode.returnResponseCode(res, 1005, apiName, null, null); // 실패(중복)시 응답받는 곳
-  } else {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  }
-
-})
-
-/** 이메일 중복확인 API */
-router.get('/email/check/:user_email?', async (req, res) => {
-
-  // API 정보
-  const apiName = '이메일 중복확인 API dddd';
-  console.log(apiName);
-  console.log('req.params %o:', req.params);
- 
-  // 파라미터값 누락 확인
-  if (!req.params.user_email) {
-    console.log('req.params %o:', req.params);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null);
-  } 
-
-  // DB
-  const user = await userMngDB.checkEmail(req.params); 
-  console.log('user %o:', user);
-
-  // response
-  if (user == 2000) {
-    return resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳
-  } else if (user == 1009) {
-    return resCode.returnResponseCode(res, 1009, apiName, null, null); // 실패(중복)시 응답받는 곳
-  } else {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  }
-
-})
-
-/** SNS 회원가입 API */
-router.post('/join/sns', async (req, res) => {
-
-  // API 정보
-  const apiName = 'SNS 회원가입 API';
-  console.log(apiName);
- 
-  // 파라미터값 누락 확인
-  if (!req.body.user_email || !req.body.login_sns_type || !req.body.user_name) {
-    console.log('req.body %o:', req.body);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null);
-  } 
-
-  // DB
-  const user = await userMngDB.addSnsUser(req.body); 
-  console.log('user %o:', user);
-
-  // response
-  if (user == 2000) {
-    // 성공시 응답받는 곳
-    return resCode.returnResponseCode(res, 2000, apiName, null, null);
-  } else if (user == 1005) {
-    return resCode.returnResponseCode(res, 1005, apiName, null, null); // X
-  } else {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  }
-
-})
-
-/** 일반회원탈퇴 API */
-router.use('/leave', userMngDB.authMiddleware)
-router.post('/leave', async (req, res) => { // 로그인 중인 상태에서 요청이 들어옴
-
-  // API 정보
-  const apiName = '일반회원탈퇴 API';
-  console.log(apiName);
-
-  // 파라미터값 누락 확인
-  if (!req.body.user_email) {
-    console.log('req.body %o:', req.body);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null); //
-  } 
-
-  // DB
-  const result = await userMngDB.leaveUser(req.body); 
-  console.log('result %o:', result);
-
-  // response
-  if (result == 9999) {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  } else if (result == 1005) { 
-    return resCode.returnResponseCode(res, 1005, apiName, null, null); // O
-  } else {
-    resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳 
-  }
-
-})
-
-/** (비로그인) 비밀번호 임시발급 API */
-router.post('/tempPassword', async (req, res) => { // 비로그인 중인 상태에서 요청이 들어옴
-
-  // API 정보
-  const apiName = '비밀번호 임시발급 API';
-  console.log(apiName);
-
-  // 파라미터값 누락 확인
-  if (!req.body.user_email) {
-    console.log('req.body %o:', req.body);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null); //
-  } 
-
-  // DB
-  const result = await userMngDB.tempPassword(req.body); 
-  console.log('result %o:', result);
-
-  // response
-  if (result == 9999) {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  } else if (result == 1005) { 
-    return resCode.returnResponseCode(res, 1005, apiName, null, null); 
-  } else if (result == 2009) { 
-    return resCode.returnResponseCode(res, 2009, apiName, null, null); // 실패시 응답받는 곳
-  } else {
-    resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳 
-  }
-
-})
-
-/** (로그인) 비밀번호 변경 API */
-router.use('/changePassword', userMngDB.authMiddleware)
-router.post('/changePassword', async (req, res) => { // 로그인 중인 상태에서 요청이 들어옴
-
-  // API 정보
-  const apiName = '비밀번호 변경 API';
-  console.log(apiName);
-
-  // 파라미터값 누락 확인
-  if (!req.body.user_email || !req.body.user_pw) {
-    console.log('req.body %o:', req.body);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null); //
-  } 
-
-  // DB
-  const result = await userMngDB.changePassword(req.body); 
-  console.log('result %o:', result);
-
-  // response
-  if (result == 9999) {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  } else if (result == 1005) { 
-    return resCode.returnResponseCode(res, 1005, apiName, null, null); // O
-  } else {
-    resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳 
-  }
-
-})
-
-/** 이메일 인증 API */
-router.post('/email', async (req, res) => {
-
-  // API 정보
-  const apiName = '이메일 인증 API';
-  console.log(apiName);
-
- 
-  // 파라미터값 누락 확인
-  if (!req.body.user_email) {
-    console.log('req.body %o:', req.body);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null); //
-  } 
-
-  // DB
-  const emailVerificationCode = await userMngDB.sendEmail(req.body); 
-  console.log('emailVerificationCode %o:', emailVerificationCode);
-
-  // response
-  if (emailVerificationCode == 9999) {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  } else if (emailVerificationCode == 1005) { 
-    return resCode.returnResponseCode(res, 1005, apiName, null, null); // X
-  } else {
-    const plusResult = { VerificationCode: emailVerificationCode }; // 원하는 출력 모양을 추가함
-    resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳 
-  }
-
-})
-
-/** (JWT발급) 일반회원 로그인 API */
-router.post('/login', async (req, res) => {
-
-  // API 정보
-  const apiName = '일반회원 로그인 API';
-  console.log(apiName);
- 
-  // 파라미터값 누락 확인
-  if (!req.body.user_email || !req.body.user_pw) {
-    console.log('req.body %o:', req.body);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null); //O
-  } 
-
-  // DB
-  const user = await userMngDB.loginUser(req.body); 
-  console.log('user is... %o:', user);
-  
-  if (user != 9999 && user != 1005) { // 회원정보 일치한다면
-    const tokens = await userMngDB.signJWT(user); 
-    console.log('tokens %o:', tokens);
-
-    if (tokens) {
-      const plusResult = { // 원하는 출력 모양을 추가함
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken
-      }; 
-      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳 
-    } else {
-      return resCode.returnResponseCode(res, 9999, apiName, null, null);
-    }
-  } else {
-    // response
-    if (user == 1005) {
-      return resCode.returnResponseCode(res, 1005, apiName, null, "로그인 실패했습니다."); // 로그인 실패 /O
-    } else {
-      return resCode.returnResponseCode(res, 9999, apiName, null, null);
-    }
-  }
-
-
-
-})
-
-/** 일반 회원가입 API */
-router.post('/join', async (req, res) => {
-
-  // API 정보
-  const apiName = '일반 회원가입 API';
-  console.log(apiName);
- 
-  // 파라미터값 누락 확인
-  if (!req.body.user_email || !req.body.user_pw) {
-    console.log('req.body %o:', req.body);
-    return resCode.returnResponseCode(res, 1002, apiName, null, null);
-  } 
-
-  // DB
-  const user = await userMngDB.addUser(req.body); 
-  console.log('user %o:', user);
-
-  // response
-  if (user == 2000) {
-    // 성공시 응답받는 곳
-    return resCode.returnResponseCode(res, 2000, apiName, null, null);
-  } else if (user == 1005) {
-    return resCode.returnResponseCode(res, 1005, apiName, null, null);
-  } else {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  }
-
-})
-
-//tests API
-router.get('/test', async (req, res) => {
-  console.log("test");
-
-    const sql = `select * from USER`;
-    const dbPool = require('../util/dbPool');
-    const connection = dbPool.init();
-  
-    connection.query(sql, (err, rows) => {
-      if (err) {
-        // logger.error(`샘플 에러: \n${JSON.stringify(err, null, 2)}`);
-      } else {
-        message = '회원가입에 성공했습니다.';
-      }
-      
-      res.json({
-        'message': "rows"
-      });
-    })
-})
-
-
 module.exports = router;
