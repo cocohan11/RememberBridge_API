@@ -38,7 +38,7 @@ router.get('/info/:user_email?', async (req, res) => {
   } 
 
   // DB
-
+  const user = await userMngDB.getUser(req.params); 
   console.log('user.js user is %o:', user);
 
   // response
@@ -533,7 +533,7 @@ router.get('/test/token/:email?', async (req, res) => {
               user_id: userInfo.user_id,
               user_name: userInfo.user_name,
               user_email: userInfo.user_email,
-            }, "accesssecret", {
+            }, process.env.JWT_ACCESS_TOKEN_KEY, {
               expiresIn: '1m',
               issuer : 'About Tech han2',
             });
@@ -542,7 +542,7 @@ router.get('/test/token/:email?', async (req, res) => {
               user_id: userInfo.user_id,
               user_name: userInfo.user_name,
               user_email: userInfo.user_email,
-            }, "refreshsecret", {
+            }, process.env.JWT_REFRESH_TOKEN_KEY, {
               expiresIn: '3m',
               issuer : 'About Tech han2',
             });

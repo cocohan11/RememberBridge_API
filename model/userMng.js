@@ -88,7 +88,7 @@ userMng.prototype.signJWT = (userInfo) => {
  * 1. DB에서 리프레시토큰 조회
  * 2. 액세스토큰 갱신
  * 3. SNS 회원탈퇴 요청
- * 4. DB에서 리프레시토큰 삭제
+ * 4. DB에서 유저 삭제
  * 회원탈퇴하면 카카오에서 로그아웃도 같이 진행시킨다.(==토큰만료) 
 */
 userMng.prototype.leaveSns = async (query) => { // 이메일, sns type
@@ -121,7 +121,7 @@ userMng.prototype.leaveSns = async (query) => { // 이메일, sns type
     
     // DB에서 리프레시토큰 삭제
     if (kakaoId) {
-        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email));
+        const result = await mySQLQuery(await leaveUser(query));
         console.log('result %o:', result); // 숫자리턴
     }
     return kakaoId;
@@ -140,6 +140,8 @@ userMng.prototype.logoutSns = async (query) => { // 이메일, sns type
     const refresh_token_response = await mySQLQuery(queryGetRefreshToken(query.user_email));
     const refresh_token = refresh_token_response[0].refresh_token; // 토큰만 추출
     console.log('refresh_token 1 %o:', refresh_token);
+
+    // DB에 리프레시토큰도 없다면 리프레시토큰 재발급받기
 
 
     // TODO
@@ -185,29 +187,18 @@ userMng.prototype.addSnsUser = async (query) => {
 
 /** 회원탈퇴 (일반, SNS 유저 포함)*/
 userMng.prototype.leaveUser = (query) => { // 논리삭제 (물리삭제X)
-    // 회원탈퇴 쿼리문 작성
-    async function leaveUser(query) {
-        console.log(`일반회원 회원탈퇴 쿼리문 작성`)
-        console.log('query %o:', query);
-        
-        return {
-            text: `UPDATE USER 
-                    SET user_state = 'L', leave_at = now()
-                    WHERE user_email = ?`, 
-            params: [query.user_email] 
-        };
-    }
     
     // 회원탈퇴 쿼리문 날리기
     return new Promise(async (resolve, reject) => {
         console.log(`회원탈퇴 쿼리문 날리기`)
         mySQLQuery(await leaveUser(query)) // 쿼리문 실행 
             .then(async (res) => { 
-                if (res.changedRows >= 1) return resolve(2000);
-                if (res.changedRows < 1) return resolve(1005); // 테스트이후 수정하기
+                console.log('회원탈퇴 res %o:', res);
+                if (res.affectedRows >= 1) return resolve(2000);
+                if (res.affectedRows < 1) return resolve(1005); // 테스트이후 수정하기
         })
         .catch((err) => {
-            console.log(`changePassword() err: ${err} `)
+            console.log(`회원탈퇴 err: ${err} `)
             return resolve(9999); 
         });
     }); 
@@ -371,7 +362,17 @@ userMng.prototype.addUser = (query) => {
 }
 
 //ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
-
+// 회원탈퇴 쿼리문 작성
+async function leaveUser(query) {
+    console.log(`일반회원/SNS 회원탈퇴 쿼리문 작성`)
+    console.log('query.user_email %o:', query.user_email);
+    
+    return {
+        text: `DELETE FROM USER
+                WHERE user_email = ?`, 
+        params: [query.user_email] 
+    };
+}
 
 // 카카오 토큰 갱신
 async function RenewalKakaoToken(refresh_token) {
@@ -469,7 +470,14 @@ async function processLoginOrRegister(kakaoUser, kakaoRefreshToken) {
             console.log('회원가입 쿼리문 날리기');
             await mySQLQuery(await insertSnsUser(kakaoUser, 'K', kakaoRefreshToken));
             console.log('insertSnsUser() 완료');
-        } 
+
+        } else { // 테스트 후 수정하기
+            console.log('1명이라도 있다면 로그인'); // 테스트 후 수정하기
+            console.log('SNS 로그인 쿼리문 날리기'); 
+            await mySQLQuery(await updateSnsRefreshToken(kakaoRefreshToken, kakaoUser.kakao_account.email));
+            // 로그아웃 이후 리프레시토큰이 없기 때문에 로그인(회원가입X)할 때 리프래시토큰 저장시켜주기
+        }
+
     } catch (err) {
         console.log(`오류: ${err}`);
     }
@@ -489,6 +497,19 @@ async function insertSnsUser(kakaoUser, login_sns_type, refresh_token) {
             login_sns_type,
             kakaoUser.properties.profile_image,
             refresh_token
+        ] 
+    };
+}
+
+async function updateSnsRefreshToken(refresh_token, email) {
+    console.log(`SNS 리프레시토큰발급 쿼리문 작성`)
+
+    return {
+        text: `UPDATE USER
+                SET refresh_token = ?
+                WHERE user_email = ?`, 
+        params: [
+            refresh_token ,email
         ] 
     };
 }
