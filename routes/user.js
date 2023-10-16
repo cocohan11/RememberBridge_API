@@ -4,7 +4,7 @@ const router = express.Router();
 const userMngDB = require('../model/userMng');
 const resCode = require('../util/resCode');
 const jwt = require('jsonwebtoken');
-const app = express();
+
 
 
 let message;
@@ -43,8 +43,7 @@ router.get('/info/:user_email?', async (req, res) => {
 
   // response
   if (user && user!=1005 && user!=9999) {
-    const plusResult = { user_info: user }; // 원하는 출력 모양을 추가함
-    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', user); // 성공시 응답받는 곳
   } else if (user == 1005) {
     return resCode.returnResponseCode(res, 1005, apiName, null, null); // 실패(중복)시 응답받는 곳
   } else {
@@ -312,7 +311,7 @@ router.post('/login', async (req, res) => {
   const user = await userMngDB.loginUser(req.body); 
   console.log('user is... %o:', user);
   
-  if (user != 9999 && user != 1005) { // 회원정보 일치한다면
+  if (user != 9999 && user != 2009) { // 회원정보 일치한다면
     const tokens = await userMngDB.signJWT(user); 
     console.log('tokens %o:', tokens);
 
@@ -328,8 +327,8 @@ router.post('/login', async (req, res) => {
     }
   } else {
     // response
-    if (user == 1005) {
-      return resCode.returnResponseCode(res, 1005, apiName, null, "로그인 실패했습니다."); // 로그인 실패 /O
+    if (user == 2009) {
+      return resCode.returnResponseCode(res, 2009, apiName, null, "로그인 실패했습니다.");
     } else {
       return resCode.returnResponseCode(res, 9999, apiName, null, null);
     }
@@ -368,9 +367,130 @@ router.post('/join', async (req, res) => {
 
 })
 
+/** accessToken 재발급 API */
+router.post('/auth/accessToken', async (req, res) => { // refreshToken으로 재발급
+
+  // API 정보
+  const apiName = 'accessToken 재발급 API';
+  console.log(apiName);
+ 
+  // 파라미터값 누락 확인
+  const refreshToken = req.headers['refresh'] // 프론트에서 요청헤더에 담아서 보냄
+  console.log("refreshToken is.. " + refreshToken)
+
+  if (!refreshToken) {
+    console.log('refreshToken %o:', refreshToken);
+    return resCode.returnResponseCode(res, 3002, apiName, null, null);
+  } 
+
+  // DB
+  const data = await userMngDB.RenewalAccessToken(refreshToken); 
+  console.log('data %o:', data);
+
+  // response
+  if (data == 3009 || data == undefined) {
+    return resCode.returnResponseCode(res, 3009, apiName, null, null);
+  } else if (data == 1005) {
+    return resCode.returnResponseCode(res, 1005, apiName, null, null);
+  } else {
+    // 성공시 응답받는 곳
+    const plusResult = data; // 원하는 출력 모양을 추가함
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
+  }
+
+})
+
+router.post('/auth/accessToken/:email?', async (req, res) => { // refreshToken으로 재발급
+  console.log('accessToken 재발급 API')
+  try {
+    const token = req.headers['refresh'] || req.query.token // 프론트에서 요청헤더에 담아서 보냄
+    console.log("refreshToken is.. " + token)
+    console.log('jwt.decode(token) %o:', jwt.decode(token));
+    
+
+    jwt.verify(token, "refreshsecret", (error, decoded) => {
+        console.log(`jwt.verify`);
+        if(error){
+          console.log(`에러가 났습니다\n ${error}`);
+          res.json("refreshToken fail", error);
+        } else {
+          // 액세스 토큰의 페이로드에서 사용자정보 가져오기
+          const userInfo = jwt.decode(token);
+      
+          // 토큰 발급
+          if (!token) { 
+            console.log('!rows');
+            res.json("refreshToken fail");
+          } else {
+            console.log('rows');
+            
+            // accessToken 새로 발급
+            const accessToken = jwt.sign({
+              user_id: userInfo.user_id,
+              user_name: userInfo.user_name,
+              user_email: userInfo.user_email,
+            }, "accesssecret", {
+              expiresIn: '1m',
+              issuer : 'About Tech han.. new accessToken',
+            });
+
+            // 토큰 전달하기
+            console.log('dddd.. '+accessToken);
+            res.setHeader('Access-Control-Allow-Credentials', 'true'); 
+            res.status(200).json(
+              {
+                "data": {
+                  accessToken, userInfo
+                }, "message": "ok"
+              })
+          }
+        }
+    })
+  } catch (error) {
+    // res.status(200).json(data);
+  }
+})
 
 // ---------------------- TEST -----------------------
-//tests API
+
+
+const multer = require('multer');
+const multerS3 = require('multer-s3');
+const { S3Client } = require('@aws-sdk/client-s3');
+// const s3 = new AWS.S3();
+const path = require('path');
+
+let s3 = new S3Client({
+  region: 'ap-northeast-2',
+  credentials: {
+    accessKeyId: process.env.AWS_S3_ACCESS_ID,
+    secretAccessKey: process.env.AWS_S3_ACCESS_KEY,
+  },
+  sslEnabled: false,
+  s3ForcePathStyle: true,
+  signatureVersion: 'v4',
+});
+
+const upload = multer({  
+  storage: multerS3({       
+    s3: s3,
+    bucket: 'rb2web-rembridge',
+    key: function (req, file, cb) {
+      cb(null, `original/${Date.now()}${path.basename(file.originalname)}`);
+    },
+    ContentType: multerS3.AUTO_CONTENT_TYPE, // contentType 자동 설정
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+// test img API
+router.post('/img', upload.single('img'), (req, res) => {
+  console.log('req.file', req.file);
+  console.log('req.body', req.body);
+  res.json({ url: req.file.location });
+});
+
+//test API
 router.get('/test', async (req, res) => {
   console.log("test");
 
@@ -422,58 +542,6 @@ router.get('/test/verifyToken', async (req, res) => {
     console.log("!verified"); // 여기로 안 들어오고 에러가 나버리네
   }
   // console.log(verified);
-})
-// test) refreshToken로 액세스토큰 재발급 API
-router.get('/test/refreshToken/:email?', async (req, res) => {
-  console.log('refreshToken API')
-  try {
-    const token = req.headers['refresh'] || req.query.token // 프론트에서 요청헤더에 담아서 보냄
-    // const token = req.cookies.refreshToken; // 브라우저에 저장된 토큰에서 토큰값가져오기
-    console.log("refreshToken is.. " + token)
-    console.log('jwt.decode(token) %o:', jwt.decode(token));
-    
-
-    jwt.verify(token, "refreshsecret", (error, decoded) => {
-        console.log(`jwt.verify`);
-        if(error){
-          console.log(`에러가 났습니다\n ${error}`);
-          res.json("refreshToken fail", error);
-        } else {
-          // 액세스 토큰의 페이로드에서 사용자정보 가져오기
-          const userInfo = jwt.decode(token);
-      
-          // 토큰 발급
-          if (!token) { 
-            console.log('!rows');
-            res.json("refreshToken fail");
-          } else {
-            console.log('rows');
-            
-            // accessToken 새로 발급
-            const accessToken = jwt.sign({
-              user_id: userInfo.user_id,
-              user_name: userInfo.user_name,
-              user_email: userInfo.user_email,
-            }, "accesssecret", {
-              expiresIn: '1m',
-              issuer : 'About Tech han.. new accessToken',
-            });
-
-            // 토큰 전달하기
-            console.log('dddd.. '+accessToken);
-            res.setHeader('Access-Control-Allow-Credentials', 'true'); 
-            res.status(200).json(
-              {
-                "data": {
-                  accessToken, userInfo
-                }, "message": "ok"
-              })
-          }
-        }
-    })
-  } catch (error) {
-    // res.status(200).json(data);
-  }
 })
 // test) accessToken 확인하는 API
 router.get('/test/accessToken/:email?', async (req, res) => {
@@ -534,7 +602,7 @@ router.get('/test/token/:email?', async (req, res) => {
               user_name: userInfo.user_name,
               user_email: userInfo.user_email,
             }, process.env.JWT_ACCESS_TOKEN_KEY, {
-              expiresIn: '1m',
+              expiresIn: '5m',
               issuer : 'About Tech han2',
             });
             // refresh Token 발급
@@ -543,7 +611,7 @@ router.get('/test/token/:email?', async (req, res) => {
               user_name: userInfo.user_name,
               user_email: userInfo.user_email,
             }, process.env.JWT_REFRESH_TOKEN_KEY, {
-              expiresIn: '3m',
+              expiresIn: '10m',
               issuer : 'About Tech han2',
             });
 

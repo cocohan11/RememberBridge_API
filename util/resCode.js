@@ -116,7 +116,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
         if (subMessage) {
           message = subMessage
         } else {
-          message = '토큰에러'
+          message = apiName+' 실패 (토큰에러)'
         }
         let result_token_error = {
           code: '3009',
