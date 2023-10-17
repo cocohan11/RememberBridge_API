@@ -44,8 +44,33 @@ const uploadForBackground = createMulterMiddleware('memory_space/background');  
 
 
 //--------------------------------------------------------
+/** 일기 조회 API */
+router.get('/diary/info/:diary_id?', async (req, res) => { // 최대 5장
 
-/** 일기 등록 API */
+  // API 정보
+  const apiName = '추억 일기 조회 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.params.diary_id) {
+    console.log('req.params %o:', req.params);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const plusResult = await spaceMngDB.getDiary(req.params);
+  console.log('plusResult %o:', plusResult); 
+
+  // response
+  if (plusResult != 9999 || plusResult != 1005 || plusResult != undefined) {
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
+/** 일기 작성 API */
 router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res) => { // 최대 5장
 
   // API 정보

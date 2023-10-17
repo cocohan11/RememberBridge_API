@@ -9,6 +9,33 @@ const {
 function spaceMng() {}
 
 
+
+/** 일기 조회
+ * 1. DB) DIARY 테이블에서 diary_info 리턴
+ * 2. DB) DIARY_PHOTO 테이블에서 URL배열 리턴
+*/
+spaceMng.prototype.getDiary = async (query) => {
+    
+    // 1. DB) DIARY 테이블에서 diary_info 리턴
+    let diary_info = await mySQLQuery(await selectDiary(query))
+    console.log('diary_info %o:', diary_info);
+    if (!diary_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+
+    // 2. DB) DIARY_PHOTO 테이블에서 URL배열 리턴
+    let diary_photos = await mySQLQuery(await selectPhotoByOneDiary(query.diary_id))
+    console.log('diary_photos %o:', diary_photos);
+    if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+    // API성공 시) 원하는 출력 모양을 추가함
+    return {
+        diary_info: diary_info[0],
+        diary_photos: diary_photos,
+    }; 
+
+}
+
+
 /** 일기 등록
  * 1. space id 존재유무 조회
  * 2. DB) 파라미터들 DIARY 테이블에 저장
@@ -154,6 +181,33 @@ spaceMng.prototype.addSpace = async (query, file_location) => {
 
 
 //------------------------- 쿼리 -------------------------
+
+// 반려견 정보 조회 쿼리문 작성
+async function selectPhotoByOneDiary(diary_id) {
+    console.log(`반려견 정보 조회 쿼리문 작성`)
+    console.log('diary_id %o:', diary_id);
+
+    return { 
+        text: `SELECT photo_id, photo_url
+                FROM DIARY_PHOTO
+                WHERE diary_id = ? `, 
+        params: [diary_id] 
+    }; 
+}
+
+// 반려견 정보 조회 쿼리문 작성
+async function selectDiary(query) {
+    console.log(`반려견 정보 조회 쿼리문 작성`)
+    console.log('query %o:', query);
+
+    return { 
+        text: `SELECT diary_id, emotion, dairy_content, DATE_FORMAT(select_date, '%Y-%m-%d') AS select_date
+                FROM DIARY
+                WHERE diary_id = ? `, 
+        params: [query.diary_id] 
+    }; 
+}
+
 
 // DIARY_PHOTO 테이블에 사진URL 저장
 async function addDiaryPhoto(diary_id, photo_url) {
