@@ -20,7 +20,6 @@ let s3 = new S3Client({
   signatureVersion: 'v4',
 });
 
-
 // 멀터 미들웨어를 생성하는 함수
 const createMulterMiddleware = (dynamicPath) => {
   return multer({
@@ -36,6 +35,7 @@ const createMulterMiddleware = (dynamicPath) => {
   });
 };
 
+
 // S3 사진저장경로 별 미들웨어
 const uploadForDog = createMulterMiddleware('profile/dog'); // 'profile/dog' 경로를 사용하는 미들웨어 생성 // 반려견프사 (1장)
 const uploadForUser = createMulterMiddleware('profile/user'); // 유저프사 (1장)
@@ -44,6 +44,33 @@ const uploadForBackground = createMulterMiddleware('memory_space/background');  
 
 
 //--------------------------------------------------------
+/** 일기 삭제 API */
+router.get('/diary/delete/:diary_id?', async (req, res) => { // 최대 5장
+
+  // API 정보
+  const apiName = '추억 일기 삭제 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.params.diary_id) {
+    console.log('req.params %o:', req.params);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const result = await spaceMngDB.removeDiary(req.params);
+  console.log('result %o:', result); 
+
+  // response
+  if (result == 2000) {
+    return resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
+
 /** 일기 조회 API */
 router.get('/diary/info/:diary_id?', async (req, res) => { // 최대 5장
 
@@ -82,16 +109,23 @@ router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res
     console.log('req.body %o:', req.body);
     console.log('req.files %o:', req.files);
     return resCode.returnResponseCode(res, 1002, apiName, null, null);
-  } 
+  }
 
   // 사진 확인
   console.log('req.files', req.files);
   // 저장된 사진 URL 배열
   const locations = req.files.map((file) => file.location); // req.files에서 location 속성만 추출하여 배열로 만듦
-  console.log(locations);
+  const bucket = req.files.map((file) => file.bucket);
+  const key = req.files.map((file) => file.key); 
+  const fileInfo = {
+    locations : locations,
+    bucket: bucket,
+    key:key
+  }
+  console.log('fileInfo', fileInfo);
 
   // DB
-  const diary_id = await spaceMngDB.addDiary(req.body, locations);
+  const diary_id = await spaceMngDB.addDiary(req.body, fileInfo);
   console.log('diary_id %o:', diary_id); // 성공시) diary_id 응답
 
   // response

@@ -4,10 +4,66 @@ const dbPool = require('../util/dbPool');
 const connection = dbPool.init();
 require("dotenv").config(); // 환경변수 모듈
 const {
-    // 환경변수'
+    AWS_S3_ACCESS_ID, AWS_S3_ACCESS_KEY, AWS_S3_REGION// 환경변수'
 } = process.env;
-function spaceMng() {}
+const AWS = require('aws-sdk');
+AWS.config.update({
+    region: AWS_S3_REGION,
+    accessKeyId: AWS_S3_ACCESS_ID,
+    secretAccessKey: AWS_S3_ACCESS_KEY
+});
+const s3 = new AWS.S3();
+function spaceMng() { }
 
+
+/** 일기 삭제
+ * 1. 일기데이터, 사진URL, S3사진파일 존재유무 확인
+ * 2. 전부 존재한다면 하나씩 삭제하기 (안정성)
+*/
+spaceMng.prototype.removeDiary = async (query) => {
+
+    // 1-1) 존재유무 확인 - 일기데이터
+    let diary_info = await mySQLQuery(await selectDiary(query))
+    console.log('diary_info %o:', diary_info);
+    if (!diary_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+    // 1-2) 존재유무 확인 - 사진URL
+    let diary_photos = await mySQLQuery(await selectPhotoForS3(query.diary_id))
+    console.log('diary_photos %o:', diary_photos);
+    console.log('diary_photos.length %o:', diary_photos.length);
+    if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+    // 1-3) 존재유무 확인 - S3사진파일
+    let bucketPathList = []; 
+    let bucketPathList_exist = [];
+    for (let i = 0; i < diary_photos.length; i++) { // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
+        bucketPathList.push({ Bucket: diary_photos[i].bucket, Key: diary_photos[i].s3key })
+        console.log('i :', i);
+        console.log('bucketPathList :', bucketPathList);
+    }
+
+    // S3에 사진존재하는지 확인하기
+    const result = await checkfileExists(bucketPathList, bucketPathList_exist);
+    console.log('result :', result);
+    if (result == 1005) return 1005;
+
+    //---------------------------------------------------------
+    // 2-1) 삭제하기 - 일기데이터
+    let res_delete = await mySQLQuery(await removeDiary(query.diary_id))
+    console.log('res_delete %o:', res_delete);
+    if (res_delete.affectedRows != 1) return 9999; // 삭제실패시 9999 응답
+
+    // 2-2) 삭제하기 - 사진URL
+    let res_delete_url = await mySQLQuery(await removeDiaryPhotoUrls(query.diary_id))
+    console.log('res_delete_url %o:', res_delete_url); 
+    if (res_delete_url.affectedRows == 0) return 9999; // 삭제실패시 9999 응답
+
+    // 2-3) 삭제하기 - S3사진파일
+    const res_delete_s3 = await removeDiaryPhotosFromS3(bucketPathList);
+    console.log('res_delete_s3 %o:', res_delete_s3); 
+    return res_delete_s3; // 2000 또는 9999
+
+}
 
 
 /** 일기 조회
@@ -42,7 +98,7 @@ spaceMng.prototype.getDiary = async (query) => {
  * 3. DB) 사진들 DIARY_PHOTO 테이블에 하나씩 저장
  * 4. 로직2, 로직3 성공해야 diary_id 응답하기
 */
-spaceMng.prototype.addDiary = async (query, locations) => {
+spaceMng.prototype.addDiary = async (query, fileInfo) => {
     
     // 1. 추억공간 조회
     const find_space = await mySQLQuery(await selectSpace(query.space_id))
@@ -58,8 +114,12 @@ spaceMng.prototype.addDiary = async (query, locations) => {
 
 
     // 3. DB) 사진들 DIARY_PHOTO 테이블에 하나씩 저장
-    for (const location of locations) { // 반복문을 사용하여 locations 배열 내의 URL을 하나씩 처리
-        let photo_id = await mySQLQuery(await addDiaryPhoto(diary_id, location));
+    for (let i = 0; i < fileInfo.locations.length; i++) { // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
+        const location = fileInfo.locations[i];
+        const bucket = fileInfo.bucket[i];
+        const key = fileInfo.key[i];
+        
+        let photo_id = await mySQLQuery(await addDiaryPhoto(diary_id, location, bucket, key));
         console.log('photo_id %o:', photo_id);
         if (!photo_id) return 9999; // 저장안됐으면 9999응답
     }
@@ -180,9 +240,118 @@ spaceMng.prototype.addSpace = async (query, file_location) => {
 }
 
 
+//------------------------- 함수 -------------------------
+
+// S3 파일삭제 요청양식
+function pramsForDeleteObjects(bucketPathList_exist, idx) { 
+    return params = {
+      Bucket: bucketPathList_exist[idx].Bucket, 
+      Delete: {
+       Objects: [
+        {
+          Key: bucketPathList_exist[idx].Key 
+        }
+       ], 
+       Quiet: false // (참고) Delete API 요청에 대한 응답에 삭제 작업의 성공/실패 여부와 관련된 정보
+      }
+    };
+}
+
+// S3 파일삭제 함수
+async function removeDiaryPhotosFromS3(bucketPathList) {
+    console.log(`deleteFiles() 삭제할 파일 갯수: ${bucketPathList.length}`);
+  
+    try {
+      const deletePromises = bucketPathList.map((value, index) => {
+        return s3.deleteObjects(pramsForDeleteObjects(bucketPathList, index)).promise();
+      });
+  
+      await Promise.all(deletePromises); // 모든 삭제 작업을 병렬로 처리
+      console.log(`File deleted successfully.`); // 조회O 삭제O
+      return 2000;
+    } catch (err) {
+      console.log(`deleteFiles() err: \n${JSON.stringify(err.stack, null, 2)}`);
+      return 9999; 
+    }
+}
+
+// S3 파일존재유무 조회
+async function checkfileExists(bucketPathList, bucketPathList_exist) {
+    console.log('파일명으로 S3에 사진있는지 조회하기 checkExists()');
+    console.log('bucketPathList', bucketPathList);
+    const promises = [];
+  
+    for (const value of bucketPathList) {
+      if (value != null) {
+        promises.push(
+          new Promise(async (resolve, reject) => {
+            try {
+              const exists_data = await s3.headObject(value).promise();
+              console.log(`File ${value.Key} exists. checking...and list push`);
+              bucketPathList_exist.push(value);
+              console.log('bucketPathList_exist', bucketPathList_exist);
+              resolve(exists_data);
+            } catch (err) {
+              console.log(`File ${value.Key} does not exist.`);
+              reject(1005);
+            }
+          })
+        );
+      }
+    }
+  
+    try {
+      console.log(`promises 안에 담겨져서 존재하는지 조회할 파일 갯수: ${promises.length}`);
+      const res = await Promise.all(promises);
+      console.log('res', res);
+      console.log('All files exist. Deleting...');
+      return 2000;
+    } catch (err) {
+      console.log('File does not exist. Cannot delete.');
+      return 1005;
+    }
+}
+  
 //------------------------- 쿼리 -------------------------
 
-// 반려견 정보 조회 쿼리문 작성
+// 일기 사진 url 삭제 쿼리문 작성
+async function removeDiaryPhotoUrls(diary_id) {
+    console.log(`일기 사진 url 삭제 쿼리문 작성`)
+    console.log('diary_id %o:', diary_id);
+
+    return { 
+        text: `DELETE FROM DIARY_PHOTO
+                WHERE diary_id = ? `, 
+        params: [diary_id] 
+    }; 
+}
+
+// 일기 삭제 쿼리문 작성
+async function removeDiary(diary_id) {
+    console.log(`일기 삭제 쿼리문 작성`)
+    console.log('diary_id %o:', diary_id);
+
+    return { 
+        text: `DELETE FROM DIARY
+                WHERE diary_id = ? `, 
+        params: [diary_id] 
+    }; 
+}
+
+// 일기사진 조회 쿼리문 작성 2
+async function selectPhotoForS3(diary_id) {
+    console.log(`반려견 정보 조회 쿼리문 작성`)
+    console.log('diary_id %o:', diary_id);
+
+    return { 
+        text: `SELECT bucket, s3key
+                FROM DIARY_PHOTO
+                WHERE diary_id = ? `, 
+        params: [diary_id] 
+    }; 
+}
+
+// 일기사진 조회 쿼리문 작성 1
 async function selectPhotoByOneDiary(diary_id) {
     console.log(`반려견 정보 조회 쿼리문 작성`)
     console.log('diary_id %o:', diary_id);
@@ -195,7 +364,7 @@ async function selectPhotoByOneDiary(diary_id) {
     }; 
 }
 
-// 반려견 정보 조회 쿼리문 작성
+// 일기 조회 쿼리문 작성
 async function selectDiary(query) {
     console.log(`반려견 정보 조회 쿼리문 작성`)
     console.log('query %o:', query);
@@ -208,18 +377,19 @@ async function selectDiary(query) {
     }; 
 }
 
-
 // DIARY_PHOTO 테이블에 사진URL 저장
-async function addDiaryPhoto(diary_id, photo_url) {
+async function addDiaryPhoto(diary_id, photo_url, bucket, key) {
     console.log(`DIARY_PHOTO 테이블에 사진URL 저장 쿼리문 작성`)
     console.log('diary_id %o:', diary_id);
     console.log('photo_url %o:', photo_url);
+    console.log('bucket %o:', bucket);
+    console.log('key %o:', key);
     
-    return { // 컬럼 4개
+    return { // 컬럼 6개
         text: `INSERT INTO DIARY_PHOTO 
-                (diary_id, photo_url, create_at, update_at) 
-                VALUES (?, ?, now(), null)`, 
-        params: [diary_id, photo_url] 
+                (diary_id, photo_url, bucket, s3key, create_at, update_at) 
+                VALUES (?, ?, ?, ?, now(), null)`, 
+        params: [diary_id, photo_url, bucket, key] 
     };
 }
 
