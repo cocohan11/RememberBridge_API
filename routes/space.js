@@ -42,6 +42,7 @@ const uploadForUser = createMulterMiddleware('profile/user'); // 유저프사 (1
 const uploadForTimelines = createMulterMiddleware('memory_space/timeline'); // 추억공간 타임라인 사진들 (여러 장)
 const uploadForBackground = createMulterMiddleware('memory_space/background');  // 추억공간 배경사진 (1장)
 
+
 //--------------------------------------------------------
 
 /** 일기 등록 API */
@@ -52,7 +53,7 @@ router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res
   console.log(apiName);
 
   // 파라미터값 누락 확인
-  if (!req.files || !req.body.space_id || !req.body.select_date || !req.body.emotion || !req.body.dairy_content) { // 사진 필수값 (최소1장)
+  if (!req.files[0] || !req.body.space_id || !req.body.select_date || !req.body.emotion || !req.body.dairy_content) { // 사진 필수값 (최소1장)
     console.log('req.body %o:', req.body);
     console.log('req.files %o:', req.files);
     return resCode.returnResponseCode(res, 1002, apiName, null, null);
@@ -78,13 +79,6 @@ router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res
 
 })
 
-// 멀터 예외 처리 미들웨어
-router.use((err, req, res, next) => {
-  console.error(err);
-  if (err instanceof multer.MulterError) {
-    return resCode.returnResponseCode(res, 9999, null, null, 'Unexpected field');
-  }
-});
 
 /** 추억공간 삭제 API */
 router.post('/delete', async (req, res) => {
@@ -204,7 +198,6 @@ router.get('/test', async (req, res) => {
     });
 })
 
-
 /** test) multer 다중사진 API */
 router.post('/test/multer', uploadForTimelines.array('dairy_imgs', 3), async (req, res) => { // 최대 3장
 
@@ -221,12 +214,12 @@ router.post('/test/multer', uploadForTimelines.array('dairy_imgs', 3), async (re
 
   return resCode.returnResponseCode(res, 2000, apiName, null, null);
 })
-// test) 멀터 예외 처리 미들웨어
-router.use((err, req, res, next) => {
+//-------------------- 예외 미들웨어 -----------------------
+// 멀터 예외 처리 미들웨어
+router.use((err, req, res, next) => { // 멀터 미들웨어보다 뒤에있어야함 
   console.error(err);
   if (err instanceof multer.MulterError) {
     return resCode.returnResponseCode(res, 9999, null, null, 'Unexpected field');
   }
 });
-
 module.exports = router;
