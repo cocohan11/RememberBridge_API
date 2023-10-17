@@ -9,6 +9,39 @@ const {
 function spaceMng() {}
 
 
+/** 일기 등록
+ * 1. space id 존재유무 조회
+ * 2. DB) 파라미터들 DIARY 테이블에 저장
+ * 3. DB) 사진들 DIARY_PHOTO 테이블에 하나씩 저장
+ * 4. 로직2, 로직3 성공해야 diary_id 응답하기
+*/
+spaceMng.prototype.addDiary = async (query, locations) => {
+    
+    // 1. 추억공간 조회
+    const find_space = await mySQLQuery(await selectSpace(query.space_id))
+    console.log('find_space.length 1이어야함 %o:', find_space.length);
+    if (find_space.length != 1) return 1005; // 추억공간이 조회안된다면 다음 로직안넘어가고 1005 응답으로 끝냄
+
+
+    // 2. DB) 파라미터들 DIARY 테이블에 저장
+    let diary_id = await mySQLQuery(await addDiary(query))
+    diary_id = diary_id.insertId; // diary_id만 추출
+    console.log('diary_id %o:', diary_id);
+    if (!diary_id) return 9999; // 저장안됐으면 9999응답
+
+
+    // 3. DB) 사진들 DIARY_PHOTO 테이블에 하나씩 저장
+    for (const location of locations) { // 반복문을 사용하여 locations 배열 내의 URL을 하나씩 처리
+        let photo_id = await mySQLQuery(await addDiaryPhoto(diary_id, location));
+        console.log('photo_id %o:', photo_id);
+        if (!photo_id) return 9999; // 저장안됐으면 9999응답
+    }
+
+
+    // 4. diary_id 응답하기
+    return diary_id;
+}
+
 
 /** 추억공간 & 반려견 정보 삭제 (추후 사진삭제예정)
  * 1. 추억공간 조회
@@ -93,7 +126,7 @@ spaceMng.prototype.changeDog = async (query, file_location) => { // body(반려�
 /** 추억공간 생성 
  * 1. 이메일로 user_id 응답받기
  * 2. DOG 테이블에 반려견 정보 저장
-     * 3. MEMORY_SPACE 테이블에 user_id, dog_id값 저장
+ * 3. MEMORY_SPACE 테이블에 user_id, dog_id값 저장
 */
 spaceMng.prototype.addSpace = async (query, file_location) => {
     
@@ -122,7 +155,32 @@ spaceMng.prototype.addSpace = async (query, file_location) => {
 
 //------------------------- 쿼리 -------------------------
 
+// DIARY_PHOTO 테이블에 사진URL 저장
+async function addDiaryPhoto(diary_id, photo_url) {
+    console.log(`DIARY_PHOTO 테이블에 사진URL 저장 쿼리문 작성`)
+    console.log('diary_id %o:', diary_id);
+    console.log('photo_url %o:', photo_url);
+    
+    return { // 컬럼 4개
+        text: `INSERT INTO DIARY_PHOTO 
+                (diary_id, photo_url, create_at, update_at) 
+                VALUES (?, ?, now(), null)`, 
+        params: [diary_id, photo_url] 
+    };
+}
 
+// DIARY 테이블에 일기 정보 생성
+async function addDiary(query) {
+    console.log(`일기 정보 생성 쿼리문 작성`)
+    console.log('query %o:', query);
+    
+    return { // 파라미터 6개
+        text: `INSERT INTO DIARY 
+                (space_id, select_date, emotion, dairy_content, create_at, update_at) 
+                VALUES (?, ?, ?, ?, now(), null)`, 
+        params: [query.space_id, query.select_date, query.emotion, query.dairy_content] 
+    };
+}
 
 // DOG 삭제 쿼리문 작성
 async function removeDog(dog_id) {
@@ -174,7 +232,6 @@ async function selectDog(dog_id) {
     }; // 파라미터 6개
 }
 
-
 // 추억공간 반려견 정보 수정 쿼리문 작성
 async function changeDog(query, file_location) {
     console.log(`추억공간 생성 쿼리문 작성`)
@@ -207,7 +264,6 @@ async function changeDog(query, file_location) {
         }; // 파라미터 6개
     }
 }
-
 
 // 추억공간 생성 쿼리문 작성
 async function addSpace(user_id, dog_id) {

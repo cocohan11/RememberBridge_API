@@ -20,18 +20,71 @@ let s3 = new S3Client({
   signatureVersion: 'v4',
 });
 
-const upload = multer({  
-  storage: multerS3({       
-    s3: s3,
-    bucket: 'rb2web-rembridge',
-    key: function (req, file, cb) {
-      cb(null, `profile/dog/${Date.now()}${path.basename(file.originalname)}`);
-    },
-    ContentType: multerS3.AUTO_CONTENT_TYPE, // contentType 자동 설정
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
+
+// 멀터 미들웨어를 생성하는 함수
+const createMulterMiddleware = (dynamicPath) => {
+  return multer({
+    storage: multerS3({
+      s3: s3,
+      bucket: 'rb2web-rembridge',
+      key: function (req, file, cb) {
+        cb(null, `${dynamicPath}/${Date.now()}${path.basename(file.originalname)}`);
+      },
+      ContentType: multerS3.AUTO_CONTENT_TYPE,
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+};
+
+// S3 사진저장경로 별 미들웨어
+const uploadForDog = createMulterMiddleware('profile/dog'); // 'profile/dog' 경로를 사용하는 미들웨어 생성 // 반려견프사 (1장)
+const uploadForUser = createMulterMiddleware('profile/user'); // 유저프사 (1장)
+const uploadForTimelines = createMulterMiddleware('memory_space/timeline'); // 추억공간 타임라인 사진들 (여러 장)
+const uploadForBackground = createMulterMiddleware('memory_space/background');  // 추억공간 배경사진 (1장)
+
 //--------------------------------------------------------
+
+/** 일기 등록 API */
+router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res) => { // 최대 5장
+
+  // API 정보
+  const apiName = '추억일기 등록 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.files || !req.body.space_id || !req.body.select_date || !req.body.emotion || !req.body.dairy_content) { // 사진 필수값 (최소1장)
+    console.log('req.body %o:', req.body);
+    console.log('req.files %o:', req.files);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // 사진 확인
+  console.log('req.files', req.files);
+  // 저장된 사진 URL 배열
+  const locations = req.files.map((file) => file.location); // req.files에서 location 속성만 추출하여 배열로 만듦
+  console.log(locations);
+
+  // DB
+  const diary_id = await spaceMngDB.addDiary(req.body, locations);
+  console.log('diary_id %o:', diary_id); // 성공시) diary_id 응답
+
+  // response
+  if (diary_id != 9999 || diary_id != 1005 || diary_id != undefined) {
+    const plusResult = { diary_id: diary_id }; // 원하는 출력 모양을 추가함
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
+// 멀터 예외 처리 미들웨어
+router.use((err, req, res, next) => {
+  console.error(err);
+  if (err instanceof multer.MulterError) {
+    return resCode.returnResponseCode(res, 9999, null, null, 'Unexpected field');
+  }
+});
 
 /** 추억공간 삭제 API */
 router.post('/delete', async (req, res) => {
@@ -86,7 +139,7 @@ router.get('/dog/info/:dog_id?', async (req, res) => {
 })
 
 /** 추억공간 반려견 정보 수정 API */
-router.post('/dog/edit', upload.single('dog_prof_img'), async (req, res) => { // 사진저장 미들웨어
+router.post('/dog/edit', uploadForDog.single('dog_prof_img'), async (req, res) => { // 사진저장 미들웨어
 
     // API 정보
     const apiName = '추억공간 반려견 정보 수정 API';
@@ -111,7 +164,7 @@ router.post('/dog/edit', upload.single('dog_prof_img'), async (req, res) => { //
 })
 
 /** 추억공간 생성 API */
-router.post('/', upload.single('dog_prof_img'), async (req, res) => { // 사진저장 미들웨어
+router.post('/', uploadForDog.single('dog_prof_img'), async (req, res) => { // 사진저장 미들웨어
 
     // API 정보
     const apiName = '추억공간 생성 API';
@@ -150,4 +203,30 @@ router.get('/test', async (req, res) => {
         'message': message
     });
 })
+
+
+/** test) multer 다중사진 API */
+router.post('/test/multer', uploadForTimelines.array('dairy_imgs', 3), async (req, res) => { // 최대 3장
+
+  // API 정보
+  const apiName = 'test) multer 다중사진 API';
+  console.log(apiName);
+
+  // 사진 확인
+  console.log('req.files', req.files);
+
+  // req.files에서 location 속성만 추출하여 배열로 만듦
+  const locations = req.files.map((file) => file.location);
+  console.log(locations);
+
+  return resCode.returnResponseCode(res, 2000, apiName, null, null);
+})
+// test) 멀터 예외 처리 미들웨어
+router.use((err, req, res, next) => {
+  console.error(err);
+  if (err instanceof multer.MulterError) {
+    return resCode.returnResponseCode(res, 9999, null, null, 'Unexpected field');
+  }
+});
+
 module.exports = router;
