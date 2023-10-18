@@ -43,8 +43,35 @@ const uploadForBackground = createMulterMiddleware('memory_space/background');  
 
 
 //--------------------------------------------------------
+
+/** 타임라인 조회 (추억공간 첫 화면) API */
+router.get('/timeline/:user_id?/:dog_id?', async (req, res) => {
+
+  // API 정보
+  const apiName = '타임라인 조회 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.params.user_id || !req.params.dog_id) {
+    console.log('req.params %o:', req.params);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const plusResult = await spaceMngDB.getTimeline(req.params);
+  console.log('plusResult %o:', plusResult); 
+
+  // response
+  if (plusResult != 9999 || plusResult != 1005 || plusResult != undefined) {
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
 /** 일기 수정 API */
-router.post('/diary/edit', uploadForTimelines.array('dairy_imgs', 5), async (req, res) => { 
+router.post('/diary/edit', uploadForTimelines.array('dairy_imgs', 5), async (req, res) => { // 최대 5장
 
   // API 정보
   const apiName = '추억 일기 수정 API';
@@ -78,7 +105,7 @@ router.post('/diary/edit', uploadForTimelines.array('dairy_imgs', 5), async (req
 })
 
 /** 일기 삭제 API */
-router.get('/diary/delete/:diary_id?', async (req, res) => { // 최대 5장
+router.get('/diary/delete/:diary_id?', async (req, res) => { 
 
   // API 정보
   const apiName = '추억 일기 삭제 API';
@@ -104,7 +131,7 @@ router.get('/diary/delete/:diary_id?', async (req, res) => { // 최대 5장
 })
 
 /** 일기 조회 API */
-router.get('/diary/info/:diary_id?', async (req, res) => { // 최대 5장
+router.get('/diary/info/:diary_id?', async (req, res) => {
 
   // API 정보
   const apiName = '추억 일기 조회 API';

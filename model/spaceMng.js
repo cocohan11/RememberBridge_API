@@ -16,6 +16,37 @@ const s3 = new AWS.S3();
 function spaceMng() { }
 
 
+
+
+/** 타임라인 조회
+ * 1. 
+*/
+spaceMng.prototype.getTimeline = async (query) => {
+    
+    // 1. DB) USER 테이블에서 dog_and_user_info 리턴
+    let dog_info = await mySQLQuery(await selectDogInfo(query))
+    console.log('dog_info %o:', dog_info);
+    if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+
+    // 2. DB) DOG 테이블에서 dog_and_user_info 리턴
+    let user_info = await mySQLQuery(await selectUserInfo(query))
+    console.log('user_info %o:', user_info);
+    if (!user_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+    // 3. 일기 데이터 얻기
+    let dairy_info = await mySQLQuery(await selectDiaryInfo(query))
+    console.log('dairy_info %o:', dairy_info);
+
+    return {
+        dog_info: dog_info,
+        user_info: user_info,
+        dairy_info: dairy_info,
+    }; // 원하는 출력 모양을 추가함
+    
+}
+
+
 /** 일기 수정 
  * 0. 미들웨어로 S3에 새로받은 사진 저장하기 
  * 1. 사진 수정이 없다면 - DB의 DIARY 테이블만 수정하고 응답
@@ -378,8 +409,55 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
       return 1005;
     }
 }
-  
 //------------------------- 쿼리 -------------------------
+
+// 일기 데이터 조회 쿼리문 작성 
+async function selectDiaryInfo(query) {
+    console.log(`space_id값 얻은 후 사진조회 쿼리문 작성`)
+    console.log('query %o:', query);
+    
+    return { 
+        text: `SELECT D.diary_id, D.dairy_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date 
+                FROM DIARY AS D
+                LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+                WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? );`, 
+        params: [query.dog_id] 
+    }; 
+}
+
+// 타임라인 조회 쿼리문 작성 (추억공간 top 화면)
+async function selectDogInfo(query) {
+    console.log(`타임라인 조회 쿼리문 작성`)
+    console.log('query %o:', query);
+
+    return { 
+        text: `SELECT
+                dog_prof_img,
+                dog_name,
+                dog_bkg_img
+            FROM DOG 
+            WHERE dog_id = ?;
+       `, 
+        params: [query.dog_id] 
+    }; 
+}
+
+// 타임라인 유저이름 조회 쿼리문 작성 
+async function selectUserInfo(query) {
+    console.log(`타임라인 유저이름 조회 쿼리문 작성`)
+    console.log('query %o:', query);
+
+    return { 
+        text: `SELECT
+                user_name
+            FROM USER 
+            WHERE user_id = ?;
+       `, 
+        params: [query.user_id] 
+    }; 
+}
+
+
 
 // 일기정보 수정 쿼리문 작성
 async function changeDiary(query) {
