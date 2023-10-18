@@ -35,7 +35,6 @@ const createMulterMiddleware = (dynamicPath) => {
   });
 };
 
-
 // S3 사진저장경로 별 미들웨어
 const uploadForDog = createMulterMiddleware('profile/dog'); // 'profile/dog' 경로를 사용하는 미들웨어 생성 // 반려견프사 (1장)
 const uploadForUser = createMulterMiddleware('profile/user'); // 유저프사 (1장)
@@ -44,6 +43,40 @@ const uploadForBackground = createMulterMiddleware('memory_space/background');  
 
 
 //--------------------------------------------------------
+/** 일기 수정 API */
+router.post('/diary/edit', uploadForTimelines.array('dairy_imgs', 5), async (req, res) => { 
+
+  // API 정보
+  const apiName = '추억 일기 수정 API';
+  console.log(apiName);
+  console.log('req.body %o:', req.body);
+  console.log('req.files %o:', req.files);
+
+  // 파라미터값 누락 확인
+  if (!req.body.diary_id || !req.body.select_date || !req.body.emotion || !req.body.dairy_content) {
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+  
+  // 사진파일정보
+  let fileInfo = await getfileInfo(req);
+  console.log('fileInfo', fileInfo);
+
+  // DB
+  const result = await spaceMngDB.changeDiary(req.body, req.files, fileInfo);
+  console.log('result %o:', result); 
+
+  // response
+  if (result == 2000) {
+    return resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳
+  } else if (result == 1005) {
+    return resCode.returnResponseCode(res, 1005, apiName, null, null); 
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
 /** 일기 삭제 API */
 router.get('/diary/delete/:diary_id?', async (req, res) => { // 최대 5장
 
@@ -69,7 +102,6 @@ router.get('/diary/delete/:diary_id?', async (req, res) => { // 최대 5장
   }
 
 })
-
 
 /** 일기 조회 API */
 router.get('/diary/info/:diary_id?', async (req, res) => { // 최대 5장
@@ -114,16 +146,10 @@ router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res
   // 사진 확인
   console.log('req.files', req.files);
   // 저장된 사진 URL 배열
-  const locations = req.files.map((file) => file.location); // req.files에서 location 속성만 추출하여 배열로 만듦
-  const bucket = req.files.map((file) => file.bucket);
-  const key = req.files.map((file) => file.key); 
-  const fileInfo = {
-    locations : locations,
-    bucket: bucket,
-    key:key
-  }
-  console.log('fileInfo', fileInfo);
 
+  let fileInfo = await getfileInfo(req);
+  console.log('fileInfo', fileInfo);
+  
   // DB
   const diary_id = await spaceMngDB.addDiary(req.body, fileInfo);
   console.log('diary_id %o:', diary_id); // 성공시) diary_id 응답
@@ -137,6 +163,7 @@ router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res
   }
 
 })
+
 
 
 /** 추억공간 삭제 API */
@@ -281,4 +308,21 @@ router.use((err, req, res, next) => { // 멀터 미들웨어보다 뒤에있어�
     return resCode.returnResponseCode(res, 9999, null, null, 'Unexpected field');
   }
 });
+
+//-------------------- 함수 -----------------------
+// S3 파일삭제 함수
+async function getfileInfo(req) {
+  // 저장된 사진 URL 배열
+  const locations = req.files.map((file) => file.location); // req.files에서 location 속성만 추출하여 배열로 만듦
+  const bucket = req.files.map((file) => file.bucket);
+  const key = req.files.map((file) => file.key); 
+
+  return {
+    locations : locations,
+    bucket: bucket,
+    key:key
+  }
+}
+
+
 module.exports = router;

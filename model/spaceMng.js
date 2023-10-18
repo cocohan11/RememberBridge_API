@@ -16,6 +16,73 @@ const s3 = new AWS.S3();
 function spaceMng() { }
 
 
+/** 일기 수정 
+ * 0. 미들웨어로 S3에 새로받은 사진 저장하기 
+ * 1. 사진 수정이 없다면 - DB의 DIARY 테이블만 수정하고 응답
+ * 2. 사진 수정이 있다면 - DB의 DIARY 테이블 수정
+ * 3. (존재확인 선행) 해당 일기의 DIARY_PHOTO 테이블 삭제 
+ * 4. (존재확인 선행) 해당 일기의 S3 사진 전체삭제 
+ * 5. DB DIARY_PHOTO 테이블에 추가하기
+*/
+spaceMng.prototype.changeDiary = async (query, files, fileInfo) => { // body(일기 정보)
+    
+    // 일기정보 수정 (공통)
+    let res = await mySQLQuery(await changeDiary(query))
+    console.log('res %o:', res);
+    
+    // 1. 사진 수정이 없다면 - 최종응답하기
+    if (!files) {
+        if (res.changedRows == 1) return 2000  // 1개 레코드 수정됐으면 성공
+        else return 1005
+    } 
+
+    // ------------------------- 수정 있다면 -------------------------
+    // 2-1. 존재유무 확인 - db)url
+    let diary_photos = await mySQLQuery(await selectPhotoForS3(query.diary_id))
+    console.log('diary_photos %o:', diary_photos);
+    console.log('diary_photos.length %o:', diary_photos.length);
+    if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+    
+    // 2-2) 존재유무 확인 - S3사진파일
+    let bucketPathList = []; 
+    let bucketPathList_exist = [];
+    for (let i = 0; i < diary_photos.length; i++) { // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
+        bucketPathList.push({ Bucket: diary_photos[i].bucket, Key: diary_photos[i].s3key })
+        console.log('i :', i);
+        console.log('bucketPathList :', bucketPathList);
+    }
+
+    // S3에 사진존재하는지 확인하기
+    const result = await checkfileExists(bucketPathList, bucketPathList_exist);
+    console.log('result :', result);
+    if (result == 1005) return 1005;
+
+    // 3-1) 삭제하기 - 사진URL
+    let res_delete_url = await mySQLQuery(await removeDiaryPhotoUrls(query.diary_id))
+    console.log('res_delete_url %o:', res_delete_url); 
+    if (res_delete_url.affectedRows == 0) return 9999; // 삭제실패시 9999 응답
+
+    // 3-2) 삭제하기 - S3사진파일
+    const res_delete_s3 = await removeDiaryPhotosFromS3(bucketPathList);
+    console.log('res_delete_s3 %o:', res_delete_s3); 
+    // return res_delete_s3; // 2000 또는 9999
+
+    // ------------------ 5. DB에 url 저장하기 (여기위치하기 - 삭제후 저장) -------------------
+    for (let i = 0; i < fileInfo.locations.length; i++) { // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
+        const location = fileInfo.locations[i];
+        const bucket = fileInfo.bucket[i];
+        const key = fileInfo.key[i];
+        
+        let photo_id = await mySQLQuery(await addDiaryPhoto(query.diary_id, location, bucket, key));
+        console.log('DB에 url 저장하기 fileInfo.locations.length %o:', fileInfo.locations.length);
+        console.log('DB에 url 저장하기 photo_id %o:', photo_id);
+        if (!photo_id) return 9999; // 저장안됐으면 9999응답
+    }
+    return 2000;
+    
+}
+
+
 /** 일기 삭제
  * 1. 일기데이터, 사진URL, S3사진파일 존재유무 확인
  * 2. 전부 존재한다면 하나씩 삭제하기 (안정성)
@@ -313,6 +380,21 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
 }
   
 //------------------------- 쿼리 -------------------------
+
+// 일기정보 수정 쿼리문 작성
+async function changeDiary(query) {
+    console.log(`일기정보 수정 쿼리문 작성`)
+    console.log('query %o:', query);
+
+    return { 
+        text: `UPDATE DIARY 
+                SET select_date = ?,
+                emotion = ?,
+                dairy_content = ?
+                WHERE diary_id = ? `, 
+        params: [query.select_date, query.emotion, query.dairy_content, query.diary_id] 
+    }; // 파라미터 4개
+}
 
 // 일기 사진 url 삭제 쿼리문 작성
 async function removeDiaryPhotoUrls(diary_id) {
