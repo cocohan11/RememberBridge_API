@@ -17,6 +17,35 @@ function spaceMng() { }
 
 
 
+/** 일기 좋아요 등록/해제 
+* 1. DB에서 좋아요 조회 (select문)
+* 2. 조회 안 되면 DB에 추가 (insert문)
+* 3. 조회 되면 DB에서 삭제 (delete문)
+*/
+spaceMng.prototype.setLike = async (diaryId, userId) => { // body(반려견 정보)
+    
+    
+    // 1. DB에서 좋아요 조회
+    let res = await mySQLQuery(await selectDiaryLike(diaryId, userId))
+    console.log('res %o:', res);
+
+
+    // 2. 조회된 값이 1개면 delete문
+    if (res.length == 1) {  
+        let res = await mySQLQuery(await removeDiaryLike(diaryId, userId))
+        console.log('res %o:', res);
+        return false; // 좋아요(X) 리턴
+
+
+    // 3. 조회된 값이 0개면 insert문
+    } else {  
+        let res = await mySQLQuery(await addDiaryLike(diaryId, userId))
+        console.log('res %o:', res);
+        return true; // 좋아요(O) 리턴
+    }
+}
+
+
 /** 추억공간 배경사진 수정 
    - DOG 테이블에 반려견 배경사진 수정
 */
@@ -450,6 +479,42 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
     }
 }
 //------------------------- 쿼리 -------------------------
+
+// 일기 좋아요 해제 쿼리문 작성 
+async function removeDiaryLike(diaryId, userId) {
+    console.log(`일기 좋아요 해제 쿼리문 작성`)
+
+    return { 
+        text: `DELETE FROM rb2web.LIKE
+                WHERE diary_id = ? and user_id = ?`, 
+        params: [diaryId, userId] 
+    }; 
+}
+
+// 일기 좋아요 등록 쿼리문 작성 
+async function addDiaryLike(diaryId, userId) {
+    console.log(`일기 좋아요 등록 쿼리문 작성`)
+
+    return { // 컬럼 6개
+        text: `INSERT INTO rb2web.LIKE 
+                (diary_id, user_id, create_at) 
+                VALUES (?, ?, now() )`, 
+        params: [diaryId, userId] 
+    };
+}
+
+// 일기 좋아요 조회 쿼리문 작성 
+async function selectDiaryLike(diaryId, userId) {
+    console.log(`일기 좋아요 조회 쿼리문 작성`)
+
+    return { 
+        text: `SELECT * 
+                FROM rb2web.LIKE 
+                WHERE diary_id = ? and user_id = ?;
+        `, 
+        params: [diaryId, userId] 
+    }; 
+}
 
 // 일기 데이터 조회 쿼리문 작성 
 async function selectDiaryInfo(query) {

@@ -15,6 +15,37 @@ const uploadForBackground = multerMid('memory_space/background');  // 추억공�
 //--------------------------------------------------------
 
 
+/** 일기 좋아요 등록/해제 API */
+router.get('/diary/like/:diary_id/:user_id', async (req, res) => { 
+
+  // API 정보
+  const apiName = '좋아요 등록/해제 API';
+  console.log(apiName);
+  const diaryId = parseInt(req.params.diary_id, 10);
+  const userId = parseInt(req.params.user_id, 10);
+  console.log('diaryId %o', diaryId); 
+  console.log('userId %o', userId); 
+
+  // 파라미터값 누락 확인
+  if (!diaryId || !userId) {
+    console.log('req.params %o:', req.params);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const result = await spaceMngDB.setLike(diaryId, userId);
+  console.log('result %o:', result); 
+  const plusResult = { like_state: result }; // 원하는 출력 모양을 추가함
+  
+  // response
+  if (result != 9999) {
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  }
+
+})
+
 /** 추억공간 배경사진 수정 API (사진1장) */
 router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req, res) => { // 사진저장 미들웨어
 
