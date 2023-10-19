@@ -17,6 +17,25 @@ function spaceMng() { }
 
 
 
+/** 추억공간 배경사진 수정 
+   - DOG 테이블에 반려견 배경사진 수정
+*/
+spaceMng.prototype.changeBackgroundImg = async (query, file_location) => { // body(반려견 정보)
+    console.log('query %o:', query);
+    console.log('file_location %o:', file_location);
+    
+    // DOG 테이블에 배경사진 수정
+    let res = await mySQLQuery(await changeBackgroundImg(query, file_location))
+    console.log('res %o:', res);
+
+    if (res.changedRows == 1) {  // 변경된값이 1개면 성공
+        return 2000
+    } else {  // 변경된값이 없음
+        return 1005
+    }
+    
+}
+
 
 /** 타임라인 조회
  * 1. DB) DOG 테이블 조회
@@ -635,6 +654,21 @@ async function selectDog(dog_id) {
                 WHERE dog_id = ? `, 
         params: [dog_id] 
     }; // 파라미터 6개
+}
+
+// 추억공간 배경사진 수정 쿼리문 작성
+async function changeBackgroundImg(query, file_location) {
+    console.log(`추억공간 배경사진 수정 쿼리문 작성`)
+    console.log('query %o:', query);
+    console.log('file_location %o:', file_location);
+
+    return { 
+        text: `UPDATE DOG 
+                SET dog_bkg_img = ?,
+                    update_at = now()
+                WHERE dog_id = ? `, 
+        params: [file_location, query.dog_id] 
+    }; 
 }
 
 // 추억공간 반려견 정보 수정 쿼리문 작성
