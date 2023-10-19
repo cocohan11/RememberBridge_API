@@ -18,6 +18,25 @@ function userMng() {}
 
 
 
+/** 유저 정보 수정 - 프사 */
+userMng.prototype.setUserImg = async (query, url) => {
+    try {
+        console.log('query %o', query);
+        console.log('url %o', url);
+        // 유저정보 수정 쿼리문 날리기
+        const res = await mySQLQuery(queryChangeUser_img(query, url));
+        console.log('유저정보 수정 결과 : ', res);
+
+        if (res.changedRows == 1) return 2000;
+        else return 1005;
+        
+    } catch (error) {
+        console.log('에러', error);
+        return 9999;
+    }
+};
+
+
 /** accessToken 재발급 */
 userMng.prototype.RenewalAccessToken = (refreshToken) => {
     return new Promise((resolve, reject) => {
@@ -80,26 +99,9 @@ userMng.prototype.getUser = async (query) => {
         user_info: user_info[0],
         space_info: space_info,
     }; // 원하는 출력 모양을 추가함
-
-
-    // return new Promise(async (resolve, reject) => {
-    //     console.log(`회원 정보 조회 쿼리문 날리기`)
-    //     mySQLQuery(queryGetUser_noPW(query)) // 쿼리문 실행 / await로 동기화
-    //     .then((res) => { 
-    //         user = res[res.length - 1];
-    //         console.log('res length is:', res.length);
-    //         console.log('user is:', user);
-    //         if (res.length == 0) return resolve(1005);
-    //         else return resolve(user); // TODO : pw 제외하고 응답하기
-    //     })
-    //     .catch((err) => {
-    //         console.log(`selectUser() err: ${err} `)
-    //         return resolve(9999); 
-    //     });
-    // }); 
 }
 
-// 유저 정보 수정 - 이름
+/** 유저 정보 수정 - 이름 */
 userMng.prototype.setUserName = async (query) => {
     try {
         console.log('최종 쿼리 %o', query);
@@ -665,6 +667,21 @@ function queryGetUser_noPW(query) {
                 FROM USER
                 WHERE user_email = ?; `, // *로 안 한 이유: pw도 같이 불러와져서
         params: [query.user_email],
+    };
+}
+
+// 마이페이지 유저사진 수정 쿼리문 작성
+// Params : user_email, user_prof_img
+function queryChangeUser_img(query, url) {
+    console.log('유저사진 수정 API 쿼리문 작성');
+    console.log('query %o:', query);
+    console.log('url %o:', url);
+
+    return {
+        text: `UPDATE USER
+                SET user_prof_img = ?
+                WHERE user_email = ?`,
+        params: [url, query.user_email],
     };
 }
 

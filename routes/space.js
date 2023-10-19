@@ -3,50 +3,20 @@ const express = require('express');
 const router = express.Router();
 const spaceMngDB = require('../model/spaceMng');
 const resCode = require('../util/resCode');
-const multer = require('multer');
-const multerS3 = require('multer-s3');
-const { S3Client } = require('@aws-sdk/client-s3');
-const path = require('path');
+const multerMid = require('../util/multerMid'); // S3 multer 사진저장 미들웨어 별도 파일로 정리해둠
 
-// ---------------------- 미들웨어 -----------------------
-let s3 = new S3Client({
-  region: 'ap-northeast-2',
-  credentials: {
-    accessKeyId: process.env.AWS_S3_ACCESS_ID,
-    secretAccessKey: process.env.AWS_S3_ACCESS_KEY,
-  },
-  sslEnabled: false,
-  s3ForcePathStyle: true,
-  signatureVersion: 'v4',
-});
-
-// 멀터 미들웨어를 생성하는 함수
-const createMulterMiddleware = (dynamicPath) => {
-  return multer({
-    storage: multerS3({
-      s3: s3,
-      bucket: 'rb2web-rembridge',
-      key: function (req, file, cb) {
-        cb(null, `${dynamicPath}/${Date.now()}${path.basename(file.originalname)}`);
-      },
-      ContentType: multerS3.AUTO_CONTENT_TYPE,
-    }),
-    limits: { fileSize: 5 * 1024 * 1024 },
-  });
-};
 
 // S3 사진저장경로 별 미들웨어
-const uploadForDog = createMulterMiddleware('profile/dog'); // 'profile/dog' 경로를 사용하는 미들웨어 생성 // 반려견프사 (1장)
-const uploadForUser = createMulterMiddleware('profile/user'); // 유저프사 (1장)
-const uploadForTimelines = createMulterMiddleware('memory_space/timeline'); // 추억공간 타임라인 사진들 (여러 장)
-const uploadForBackground = createMulterMiddleware('memory_space/background');  // 추억공간 배경사진 (1장)
+const uploadForDog = multerMid('profile/dog'); // 'profile/dog' 경로를 사용하는 미들웨어 생성 // 반려견프사 (1장)
+const uploadForTimelines = multerMid('memory_space/timeline'); // 추억공간 타임라인 사진들 (여러 장)
+const uploadForBackground = multerMid('memory_space/background');  // 추억공간 배경사진 (1장)
 
 
 //--------------------------------------------------------
 
 
 /** 추억공간 배경사진 수정 API (사진1장) */
-router.post('/background', uploadForDog.single('dog_bkg_img'), async (req, res) => { // 사진저장 미들웨어
+router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req, res) => { // 사진저장 미들웨어
 
   // API 정보
   const apiName = '추억공간 배경사진 수정 API';

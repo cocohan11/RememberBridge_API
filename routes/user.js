@@ -4,6 +4,8 @@ const router = express.Router();
 const userMngDB = require('../model/userMng');
 const resCode = require('../util/resCode');
 const jwt = require('jsonwebtoken');
+const multerMid = require('../util/multerMid');
+
 
 
 let message;
@@ -19,7 +21,38 @@ let message;
 // TODO 필요한 파라미터 API마다 기입하기 (후순위)
 
 
-// 마이페이지 이름 수정 API
+/** 마이페이지 유저프사 수정 API */
+const uploadForUser = multerMid('profile/user'); // 유저프사 (1장)
+router.post('/mypage/change/img', uploadForUser.single('user_prof_img'), async (req, res) => { // 사진저장 미들웨어
+
+    // API 정보
+    const apiName = '마이페이지 유저 프로필사진 수정 API';
+    console.log(apiName);
+   
+    // 사진 확인
+    console.log('req.file', req.file);
+  
+    // 파라미터값 누락 확인
+    if (!req.file || !req.body.user_email) { // 사진 필수
+      console.log('req.body %o:', req.body);
+      return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    } 
+  
+    // DB
+    const result = await userMngDB.setUserImg(req.body, req.file ? req.file.location : null); // .location에서 에러나서 null처리함
+    console.log('result %o:', result); // 성공시) result=2000 응답
+  
+    // response
+    if (result == 2000) {
+      const plusResult = { user_prof_img: req.file.location }; // 원하는 출력 모양을 추가함
+      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+    } else {
+      return resCode.returnResponseCode(res, result, apiName, null, null);
+    }
+  
+})
+
+/** 마이페이지 이름 수정 API */
 // Params : user_email, user_name
 router.post('/mypage/change/name', async (req, res) => {
     const apiName = '마이페이지 유저 정보 수정 API';
