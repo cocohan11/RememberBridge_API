@@ -19,31 +19,52 @@ function spaceMng() { }
 
 
 /** 타임라인 조회
- * 1. 
+ * 1. DB) DOG 테이블 조회
+ * 2. DB) USER 테이블 조회
+ * 3. DB) DIARY, DIARY_PHOTO 테이블 조회
+ * 4. 응답값 그룹화 (날짜-일기-일기데이터 순)
 */
 spaceMng.prototype.getTimeline = async (query) => {
     
-    // 1. DB) USER 테이블에서 dog_and_user_info 리턴
+    
+    // 1. DB) DOG 테이블에서 dog_info 리턴
     let dog_info = await mySQLQuery(await selectDogInfo(query))
     console.log('dog_info %o:', dog_info);
     if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
 
-    // 2. DB) DOG 테이블에서 dog_and_user_info 리턴
+    // 2. DB) USER 테이블에서 user_info 리턴
     let user_info = await mySQLQuery(await selectUserInfo(query))
     console.log('user_info %o:', user_info);
     if (!user_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
-    // 3. 일기 데이터 얻기
+
+    // 3. DB) 일기 데이터 얻기
     let dairy_info = await mySQLQuery(await selectDiaryInfo(query))
     console.log('dairy_info %o:', dairy_info);
+
+
+    // 일기를 "diary_id"를 기준으로 그룹화할 객체
+    const groupedDiaries = {};
+    console.log('groupedDiaries 비어있음 %o:', groupedDiaries);
+    dairy_info.forEach((result) => {
+        const { diary_id, dairy_content, photo_url, select_date } = result;
+        if (!groupedDiaries[select_date]) {  // select_date 키로 된 객체가 없다면
+            groupedDiaries[select_date] = {};  // 새로운 빈 객체를 만들어 해당 키(select_date)로 추가한다.
+        }
+        if (!groupedDiaries[select_date][diary_id]) {
+            groupedDiaries[select_date][diary_id] = [];
+        }
+        groupedDiaries[select_date][diary_id].push({ dairy_content, photo_url });
+    });
+    console.log(JSON.stringify(groupedDiaries, null, 2)); // JSON 형태로 출력
+
 
     return {
         dog_info: dog_info,
         user_info: user_info,
-        dairy_info: dairy_info,
+        dairy_info: groupedDiaries,
     }; // 원하는 출력 모양을 추가함
-    
 }
 
 
