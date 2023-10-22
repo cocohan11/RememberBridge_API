@@ -15,6 +15,37 @@ const uploadForBackground = multerMid('memory_space/background');  // 추억공�
 //--------------------------------------------------------
 
 
+/** 일기 상세조회 API */
+router.get('/diary/info/detail/:diary_id?/:user_id?', async (req, res) => { 
+
+  // API 정보
+  const apiName = '일기 상세조회 API';
+  console.log(apiName);
+  console.log('req.params %o:', req.params);
+  const diaryId = parseInt(req.params.diary_id, 10); // 문자열로 받아와짐
+  const userId = parseInt(req.params.user_id, 10);
+
+  // 파라미터값 누락 확인
+  if (!diaryId || !userId) {
+    console.log('req.params %o:', req.params);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const result = await spaceMngDB.getDiaryDetail(diaryId, userId);
+  console.log('result %o:', result); 
+  // const plusResult = { like_state: result }; // 원하는 출력 모양을 추가함
+  
+  // // response
+  // if (result != 9999) {
+  //   return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  // } else {
+  //   return resCode.returnResponseCode(res, 9999, apiName, null, null);
+  // }
+
+})
+
+
 /** 일기 좋아요 등록/해제 API */
 router.get('/diary/like/:diary_id/:user_id', async (req, res) => { 
 
@@ -113,7 +144,7 @@ router.post('/diary/edit', uploadForTimelines.array('dairy_imgs', 5), async (req
   console.log('req.files %o:', req.files);
 
   // 파라미터값 누락 확인
-  if (!req.body.diary_id || !req.body.select_date || !req.body.emotion || !req.body.dairy_content) {
+  if (!req.body.diary_id || !req.body.select_date || !req.body.emotion || !req.body.diary_content) {
     console.log('req.body %o:', req.body);
     return resCode.returnResponseCode(res, 1002, apiName, null, null);
   } 
@@ -195,9 +226,11 @@ router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res
   // API 정보
   const apiName = '추억일기 등록 API';
   console.log(apiName);
+  console.log('req.body %o', req.body);
+  console.log('req.diary_imgs  %o', req.diary_imgs );
 
   // 파라미터값 누락 확인
-  if (!req.files[0] || !req.body.space_id || !req.body.select_date || !req.body.emotion || !req.body.dairy_content) { // 사진 필수값 (최소1장)
+  if (req.files.length == 0 || !req.body.space_id || !req.body.select_date || !req.body.emotion || !req.body.diary_content) { // 사진 필수값 (최소1장)
     console.log('req.body %o:', req.body);
     console.log('req.files %o:', req.files);
     return resCode.returnResponseCode(res, 1002, apiName, null, null);

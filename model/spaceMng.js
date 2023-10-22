@@ -18,6 +18,44 @@ function spaceMng() { }
 
 
 /** 일기 좋아요 등록/해제 
+* 1. Like테이블 값 리턴 (like)
+* 2. Diary테이블 값 리턴 (emotion, diary_content)
+* 3. User테이블 값 리턴 (writer(user_name))
+* 4. Comment테이블 값 리턴 (comment_id, user_name, context, count)
+*/
+spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => { // body(반려견 정보)
+    
+    
+    // 1. like
+    let like = await mySQLQuery(await selectDiaryLike(diaryId, userId))
+    console.log('like %o:', like);
+    if (like.length == 0) like = false;
+
+    // 2. emotion, diary_content
+    let emotionAndContent = await mySQLQuery(await selectDiaryEmotionAndContent(diaryId))
+    console.log('emotionAndContent %o:', emotionAndContent);
+    if (emotionAndContent.length == 0) return 1005;
+
+    // 3. writer
+    let writer = await mySQLQuery(await selectDiaryWriter(userId))
+    console.log('writer %o:', writer); 
+    if (writer.length == 0) return 1005;
+
+    // diary_info 안에 3개값 담기
+    diary_info = {
+        like:like,
+        emotion:emotionAndContent[0].emotion,
+        diary_content:emotionAndContent[0].diary_content,
+        writer:writer[0].writer
+    }
+
+    // 4. comment_id, user_name, context, count
+
+
+}
+
+
+/** 일기 좋아요 등록/해제 
 * 1. DB에서 좋아요 조회 (select문)
 * 2. 조회 안 되면 DB에 추가 (insert문)
 * 3. 조회 되면 DB에서 삭제 (delete문)
@@ -96,14 +134,14 @@ spaceMng.prototype.getTimeline = async (query) => {
     const groupedDiaries = {};
     console.log('groupedDiaries 비어있음 %o:', groupedDiaries);
     dairy_info.forEach((result) => {
-        const { diary_id, dairy_content, photo_url, select_date } = result;
+        const { diary_id, diary_content, photo_url, select_date } = result;
         if (!groupedDiaries[select_date]) {  // select_date 키로 된 객체가 없다면
             groupedDiaries[select_date] = {};  // 새로운 빈 객체를 만들어 해당 키(select_date)로 추가한다.
         }
         if (!groupedDiaries[select_date][diary_id]) {
             groupedDiaries[select_date][diary_id] = [];
         }
-        groupedDiaries[select_date][diary_id].push({ dairy_content, photo_url });
+        groupedDiaries[select_date][diary_id].push({ diary_content, photo_url });
     });
     console.log(JSON.stringify(groupedDiaries, null, 2)); // JSON 형태로 출력
 
@@ -480,6 +518,46 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
 }
 //------------------------- 쿼리 -------------------------
 
+
+// 일기 작성자 조회 쿼리문 작성 
+async function selectDiaryComment(diaryId, userId) {
+    console.log(`일기 작성자 조회 쿼리문 작성`)
+
+    return { 
+        text: `SELECT comment_id, user_name, context, count 
+                FROM COMMENT 
+                WHERE diary_id = ? and user_id = ? ;
+        `, 
+        params: [diaryId, userId] 
+    }; 
+}
+
+// 일기 작성자 조회 쿼리문 작성 
+async function selectDiaryWriter(userId) {
+    console.log(`일기 작성자 조회 쿼리문 작성`)
+
+    return { 
+        text: `SELECT user_name as writer 
+                FROM USER 
+                WHERE user_id = ?;
+        `, 
+        params: [userId] 
+    }; 
+}
+
+// 일기 감정,내용 조회 쿼리문 작성 
+async function selectDiaryEmotionAndContent(diaryId) {
+    console.log(`일기 감정,내용 조회 쿼리문 작성`)
+
+    return { 
+        text: `SELECT emotion, diary_content 
+                FROM DIARY 
+                WHERE diary_id = ?;
+        `, 
+        params: [diaryId] 
+    }; 
+}
+
 // 일기 좋아요 해제 쿼리문 작성 
 async function removeDiaryLike(diaryId, userId) {
     console.log(`일기 좋아요 해제 쿼리문 작성`)
@@ -522,7 +600,7 @@ async function selectDiaryInfo(query) {
     console.log('query %o:', query);
     
     return { 
-        text: `SELECT D.diary_id, D.dairy_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date 
+        text: `SELECT D.diary_id, D.diary_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date 
                 FROM DIARY AS D
                 LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
                 WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? );`, 
@@ -573,9 +651,9 @@ async function changeDiary(query) {
         text: `UPDATE DIARY 
                 SET select_date = ?,
                 emotion = ?,
-                dairy_content = ?
+                diary_content = ?
                 WHERE diary_id = ? `, 
-        params: [query.select_date, query.emotion, query.dairy_content, query.diary_id] 
+        params: [query.select_date, query.emotion, query.diary_content, query.diary_id] 
     }; // 파라미터 4개
 }
 
@@ -635,7 +713,7 @@ async function selectDiary(query) {
     console.log('query %o:', query);
 
     return { 
-        text: `SELECT diary_id, emotion, dairy_content, DATE_FORMAT(select_date, '%Y-%m-%d') AS select_date
+        text: `SELECT diary_id, emotion, diary_content, DATE_FORMAT(select_date, '%Y-%m-%d') AS select_date
                 FROM DIARY
                 WHERE diary_id = ? `, 
         params: [query.diary_id] 
@@ -665,9 +743,9 @@ async function addDiary(query) {
     
     return { // 파라미터 6개
         text: `INSERT INTO DIARY 
-                (space_id, select_date, emotion, dairy_content, create_at, update_at) 
+                (space_id, select_date, emotion, diary_content, create_at, update_at) 
                 VALUES (?, ?, ?, ?, now(), null)`, 
-        params: [query.space_id, query.select_date, query.emotion, query.dairy_content] 
+        params: [query.space_id, query.select_date, query.emotion, query.diary_content] 
     };
 }
 
