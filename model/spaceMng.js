@@ -16,8 +16,52 @@ const s3 = new AWS.S3();
 function spaceMng() { }
 
 
+/** 댓글 작성
+ * 1. 댓글 작성
+ * 2. 댓글 갯수
+ * 2. 댓글 내용
+*/
+spaceMng.prototype.addComment = async (query) => {
+    
 
-/** 일기 좋아요 등록/해제 
+    // 1.댓글 작성
+    let comment_id = await mySQLQuery(await addComment(query))
+    comment_id = comment_id.insertId; // comment_id만 추출
+    console.log('comment_id %o:', comment_id);
+    if (!comment_id) return 9999; // 저장안됐으면 9999응답
+
+
+    // 2. 댓글 내용
+    let diary_comment = await mySQLQuery(await selectDiaryComment(query.diary_id, 1)) // 최신댓글 1개 조회 
+    console.log('diary_comment %o:', diary_comment); 
+
+    
+    // 3. 댓글 갯수
+    let comment_count = await mySQLQuery(await selectDiaryCommentCount(query.diary_id))
+    console.log('comment_count %o:', comment_count); 
+
+    // 댓글이 없는경우 : null 응답
+    if (diary_comment[0] == undefined || comment_count[0] == undefined) {
+        comment_info = null;
+    } else {
+        comment_info = {
+            comment_id:diary_comment[0].comment_id,
+            user_name:diary_comment[0].user_name,
+            comment_text:diary_comment[0].comment_text,
+            count:comment_count[0].count
+        }
+    }
+    console.log('comment_info %o:', comment_info); 
+
+
+    // 최종응답값에 들어갈 데이터
+    return {
+        comment_info
+    }
+}
+
+
+/** 일기 상세 조회
 * 1. Like테이블 값 리턴 (like)
 * 2. Diary테이블 값 리턴 (emotion, diary_content)
 * 3. User테이블 값 리턴 (writer(user_name))
@@ -55,25 +99,25 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => {
 
 
     // 4. comment_id, user_name, comment_text
-    let diary_comment = await mySQLQuery(await selectDiaryComment(diaryId, userId))
+    let diary_comment = await mySQLQuery(await selectDiaryComment(diaryId, 1)) // 최신댓글 1개만 조회
     console.log('diary_comment %o:', diary_comment);
 
     // 5.count
-    let count = await mySQLQuery(await selectDiaryCommentCount())
+    let count = await mySQLQuery(await selectDiaryCommentCount(query.diary_id))
     console.log('count %o:', count); 
 
     // 댓글이 없는경우 : null 응답
     if (diary_comment[0] == undefined || count[0] == undefined) {
-        comment = null;
+        comment_info = null;
     } else {
-        comment = {
+        comment_info = {
             comment_id:diary_comment[0].comment_id,
             user_name:diary_comment[0].user_name,
             comment_text:diary_comment[0].comment_text,
             count:count[0].count
         }
     }
-    console.log('comment %o:', comment); 
+    console.log('comment_info %o:', comment_info); 
 
 
 
@@ -85,7 +129,7 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => {
     // 최종 응답값에 필요한 데이터들
     return {
         diary_info,
-        comment,
+        comment_info,
         diary_photos
     } 
 }
@@ -554,20 +598,35 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
 }
 //------------------------- 쿼리 -------------------------
 
-// 일기 댓글 갯수조회 쿼리문 작성 
-async function selectDiaryCommentCount() {
+
+// 일기 댓글 작성 쿼리문 작성
+async function addComment(query) {
+    console.log(`일기 댓글 작성 쿼리문 작성`)
+    console.log('query %o:', query);
+    
+    return { // 컬럼 4개
+        text: `INSERT INTO COMMENT 
+                (user_id, diary_id, comment_text, create_at) 
+                VALUES (?, ?, ?, now())`, 
+        params: [query.user_id, query.diary_id, query.comment_text] 
+    };
+}
+
+// 일기 댓글 갯수조회 쿼리문 작성
+async function selectDiaryCommentCount(diary_id) {
     console.log(`일기 댓글 갯수조회 쿼리문 작성`)
 
     return { 
         text: `SELECT COUNT(*) AS count
                 FROM COMMENT
-                WHERE COMMENT.diary_id = 1;
+                WHERE COMMENT.diary_id = ?;
         `, 
+        params: [diary_id] 
     }; 
 }
 
 // 일기 댓글 조회 쿼리문 작성 
-async function selectDiaryComment(diaryId) {
+async function selectDiaryComment(diaryId, limit) {
     console.log(`일기 댓글 조회 쿼리문 작성`)
 
     return { 
@@ -576,11 +635,13 @@ async function selectDiaryComment(diaryId) {
                 INNER JOIN USER ON COMMENT.user_id = USER.user_id
                 WHERE diary_id = ?
                 ORDER BY COMMENT.create_at DESC
-                LIMIT 1; 
+                LIMIT ?; 
         `, 
-        params: [diaryId] 
+        params: [diaryId, limit] 
     }; 
 }
+
+
 
 // 일기 작성자 조회 쿼리문 작성 
 async function selectDiaryWriter(userId) {

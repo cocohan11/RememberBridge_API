@@ -13,6 +13,33 @@ const uploadForBackground = multerMid('memory_space/background');  // 추억공�
 
 
 //--------------------------------------------------------
+/** 댓글 작성 API */
+router.post('/diary/comment', async (req, res) => { 
+
+  // API 정보
+  const apiName = '댓글 작성 API';
+  console.log(apiName);
+  console.log('req.body %o:', req.body);
+
+  // 파라미터값 누락 확인
+  if (!req.body.diary_id || !req.body.user_id || !req.body.comment_text) { // 사진 필수값 (최소1장)
+    console.log('req.body %o:', req.body);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  }
+
+  // DB
+  const plusResult = await spaceMngDB.addComment(req.body);
+  console.log('plusResult %o:', plusResult); 
+
+  // response
+  if (plusResult != 9999 && plusResult != 1005 && plusResult != undefined) {
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, plusResult, apiName, null, null);
+  }
+
+})
+
 
 
 /** 일기 상세조회 API */
@@ -44,7 +71,6 @@ router.get('/diary/info/detail/:diary_id?/:user_id?', async (req, res) => {
   }
 
 })
-
 
 /** 일기 좋아요 등록/해제 API */
 router.get('/diary/like/:diary_id/:user_id', async (req, res) => { 
