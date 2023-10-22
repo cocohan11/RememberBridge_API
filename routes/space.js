@@ -32,16 +32,16 @@ router.get('/diary/info/detail/:diary_id?/:user_id?', async (req, res) => {
   } 
 
   // DB
-  const result = await spaceMngDB.getDiaryDetail(diaryId, userId);
-  console.log('result %o:', result); 
+  const plusResult = await spaceMngDB.getDiaryDetail(diaryId, userId);
+  console.log('plusResult %o:', plusResult); 
   // const plusResult = { like_state: result }; // 원하는 출력 모양을 추가함
   
-  // // response
-  // if (result != 9999) {
-  //   return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
-  // } else {
-  //   return resCode.returnResponseCode(res, 9999, apiName, null, null);
-  // }
+  // response
+  if (plusResult != 9999 && plusResult != 1005 ) {
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, plusResult, apiName, null, null); // 1005 또는 9999
+  }
 
 })
 

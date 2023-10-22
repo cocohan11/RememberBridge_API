@@ -21,9 +21,11 @@ function spaceMng() { }
 * 1. Like테이블 값 리턴 (like)
 * 2. Diary테이블 값 리턴 (emotion, diary_content)
 * 3. User테이블 값 리턴 (writer(user_name))
-* 4. Comment테이블 값 리턴 (comment_id, user_name, context, count)
+* 4. Comment테이블 값 리턴 (comment_id, user_name, comment_text)
+* 5. Comment테이블 갯수 리턴 (count)
+* 6. DIARY_PHOTO테이블 값 리턴 (photo_id, photo_url)
 */
-spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => { // body(반려견 정보)
+spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => { 
     
     
     // 1. like
@@ -48,10 +50,44 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => { // body(반려�
         diary_content:emotionAndContent[0].diary_content,
         writer:writer[0].writer
     }
+    console.log('diary_info %o:', diary_info);
 
-    // 4. comment_id, user_name, context, count
 
 
+    // 4. comment_id, user_name, comment_text
+    let diary_comment = await mySQLQuery(await selectDiaryComment(diaryId, userId))
+    console.log('diary_comment %o:', diary_comment);
+
+    // 5.count
+    let count = await mySQLQuery(await selectDiaryCommentCount())
+    console.log('count %o:', count); 
+
+    // 댓글이 없는경우 : null 응답
+    if (diary_comment[0] == undefined || count[0] == undefined) {
+        comment = null;
+    } else {
+        comment = {
+            comment_id:diary_comment[0].comment_id,
+            user_name:diary_comment[0].user_name,
+            comment_text:diary_comment[0].comment_text,
+            count:count[0].count
+        }
+    }
+    console.log('comment %o:', comment); 
+
+
+
+    // 6. photo_id, photo_url
+    let diary_photos = await mySQLQuery(await selectPhotoByOneDiary(diaryId))
+    console.log('diary_photos %o:', diary_photos);
+    if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+    // 최종 응답값에 필요한 데이터들
+    return {
+        diary_info,
+        comment,
+        diary_photos
+    } 
 }
 
 
@@ -518,17 +554,31 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
 }
 //------------------------- 쿼리 -------------------------
 
-
-// 일기 작성자 조회 쿼리문 작성 
-async function selectDiaryComment(diaryId, userId) {
-    console.log(`일기 작성자 조회 쿼리문 작성`)
+// 일기 댓글 갯수조회 쿼리문 작성 
+async function selectDiaryCommentCount() {
+    console.log(`일기 댓글 갯수조회 쿼리문 작성`)
 
     return { 
-        text: `SELECT comment_id, user_name, context, count 
-                FROM COMMENT 
-                WHERE diary_id = ? and user_id = ? ;
+        text: `SELECT COUNT(*) AS count
+                FROM COMMENT
+                WHERE COMMENT.diary_id = 1;
         `, 
-        params: [diaryId, userId] 
+    }; 
+}
+
+// 일기 댓글 조회 쿼리문 작성 
+async function selectDiaryComment(diaryId) {
+    console.log(`일기 댓글 조회 쿼리문 작성`)
+
+    return { 
+        text: `SELECT COMMENT.comment_id, USER.user_name, COMMENT.comment_text
+                FROM COMMENT
+                INNER JOIN USER ON COMMENT.user_id = USER.user_id
+                WHERE diary_id = ?
+                ORDER BY COMMENT.create_at DESC
+                LIMIT 1; 
+        `, 
+        params: [diaryId] 
     }; 
 }
 
