@@ -17,6 +17,28 @@ function spaceMng() { }
 
 
 
+/** 댓글 삭제
+ * 1. 존재유무 확인
+ * 2. 삭제하기
+*/
+spaceMng.prototype.removeDiaryComment = async (query) => {
+
+    // 1. 존재유무 확인
+    let comment_info = await mySQLQuery(await selectTheDiaryComment(query.comment_id)) // 해당댓글 조회 
+    console.log('comment_info %o:', comment_info); 
+    if (comment_info.length == 0) return 1005;
+
+
+    // 2. 삭제하기
+    let res_delete = await mySQLQuery(await removeTheDiaryComment(query.comment_id))
+    console.log('res_delete %o:', res_delete);
+    if (res_delete.affectedRows != 1) return 9999; // 삭제실패시 9999 응답
+    else return 2000;
+
+
+}
+
+
 /** 댓글 수정 
  * 1. 댓글 수정쿼리 날리기
  * 2. 수정한 댓글 정보 응답
@@ -643,6 +665,20 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
     }
 }
 //------------------------- 쿼리 -------------------------
+
+
+// 일기 삭제 쿼리문 작성
+async function removeTheDiaryComment(comment_id) {
+    console.log(`일기 삭제 쿼리문 작성`)
+    console.log('diary_id %o:', comment_id);
+
+    return { 
+        text: `DELETE FROM COMMENT
+                WHERE comment_id = ? `, 
+        params: [comment_id] 
+    }; 
+}
+
 // 일기 댓글 수정 쿼리문 작성
 async function changeComment(query) {
     console.log(`일기 댓글 수정 쿼리문 작성`)
