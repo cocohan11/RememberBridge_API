@@ -179,6 +179,38 @@ router.get('/diary/like/:diary_id/:user_id', async (req, res) => {
 
 })
 
+
+
+/** 타임라인 반려견 프사 수정 API */
+router.post('/timeline/change/img', uploadForDog.single('dog_prof_img'), async (req, res) => { // 사진저장 미들웨어
+
+    // API 정보
+    const apiName = '타임라인 반려견 프사 수정 API';
+    console.log(apiName);
+   
+    // 사진 확인
+    console.log('req.file', req.file);
+  
+    // 파라미터값 누락 확인
+    if (!req.file || !req.body.dog_id) { // 사진 필수
+      console.log('req.body %o:', req.body);
+      return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    } 
+  
+    // DB
+    const result = await spaceMngDB.setDogImg(req.body, req.file ? req.file.location : null); // .location에서 에러나서 null처리함
+    console.log('result %o:', result); // 성공시) result=2000 응답
+  
+    // response
+    if (result == 2000) {
+      const plusResult = { dog_prof_img: req.file.location }; // 원하는 출력 모양을 추가함
+      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+    } else {
+      return resCode.returnResponseCode(res, result, apiName, null, null);
+    }
+  
+})
+
 /** 추억공간 배경사진 수정 API (사진1장) */
 router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req, res) => { // 사진저장 미들웨어
 

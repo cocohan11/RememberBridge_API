@@ -252,6 +252,25 @@ spaceMng.prototype.changeBackgroundImg = async (query, file_location) => { // bo
 }
 
 
+/** 타임라인 반려견 프사 수정 */
+spaceMng.prototype.setDogImg = async (query, url) => {
+    try {
+        console.log('query %o', query);
+        console.log('url %o', url);
+        // 유저정보 수정 쿼리문 날리기
+        const res = await mySQLQuery(changeDog_img(query, url));
+        console.log('반려견 프사 수정 결과 : ', res);
+
+        if (res.changedRows == 1) return 2000;
+        else return 1005;
+        
+    } catch (error) {
+        console.log('에러', error);
+        return 9999;
+    }
+};
+
+
 /** 타임라인 조회
  * 1. DB) DOG 테이블 조회
  * 2. DB) USER 테이블 조회
@@ -688,7 +707,19 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
     }
 }
 //------------------------- 쿼리 -------------------------
+// 반려견 프사 수정 쿼리문 작성
+function changeDog_img(query, url) {
+    console.log('반려견 프사 수정 API 쿼리문 작성');
+    console.log('query %o:', query);
+    console.log('url %o:', url);
 
+    return {
+        text: `UPDATE DOG
+                SET dog_prof_img = ?
+                WHERE dog_id = ?`,
+        params: [url, query.dog_id],
+    };
+}
 
 // 일기 삭제 쿼리문 작성
 async function removeTheDiaryComment(comment_id) {
