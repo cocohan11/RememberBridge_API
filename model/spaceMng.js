@@ -273,8 +273,13 @@ spaceMng.prototype.getTimeline = async (query) => {
     if (!user_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
 
+    // 페이징에 필요한 날짜 추출 (2023-09-01 ~ 2023-09-30)
+    let dates = formattedDate(query.year, query.month);
+    console.log('dates %o:', dates);
+
+
     // 3. DB) 일기 데이터 얻기
-    let dairy_info = await mySQLQuery(await selectDiaryInfo(query))
+    let dairy_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate))
     console.log('dairy_info %o:', dairy_info);
 
 
@@ -595,6 +600,24 @@ spaceMng.prototype.addSpace = async (query, file_location) => {
 
 //------------------------- 함수 -------------------------
 
+// 날짜 문자열 함수
+function formattedDate(year, month) { // 2023, 10
+
+    // 해당 월의 마지막 날짜 구하기
+    const lastDay = new Date(year, month, 0).getDate();
+
+    // 'YYYY-MM-DD' 형식의 날짜 생성
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    console.log('startDate %o', startDate); // 출력: '2023-09-30'
+    console.log('endDate %o', endDate); // 출력: '2023-09-30'
+    
+    return {
+        startDate,
+        endDate,
+    }
+}
+
 // S3 파일삭제 요청양식
 function pramsForDeleteObjects(bucketPathList_exist, idx) { 
     return params = {
@@ -814,7 +837,7 @@ async function selectDiaryLike(diaryId, userId) {
 }
 
 // 일기 데이터 조회 쿼리문 작성 
-async function selectDiaryInfo(query) {
+async function selectDiaryInfo(query, startDate, EndDate) {
     console.log(`space_id값 얻은 후 사진조회 쿼리문 작성`)
     console.log('query %o:', query);
     
@@ -822,8 +845,11 @@ async function selectDiaryInfo(query) {
         text: `SELECT D.diary_id, D.diary_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date 
                 FROM DIARY AS D
                 LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
-                WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? );`, 
-        params: [query.dog_id] 
+                WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? )
+                AND D.select_date >= ? AND D.select_date <= ?
+                ORDER BY D.select_date ASC ;
+            `, 
+        params: [query.dog_id, startDate, EndDate] 
     }; 
 }
 

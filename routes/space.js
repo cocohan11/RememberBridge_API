@@ -211,14 +211,14 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
 })
 
 /** 타임라인 조회 (추억공간 첫 화면) API */
-router.get('/timeline/:user_id?/:dog_id?', async (req, res) => {
+router.get('/timeline/:user_id/:dog_id/:year/:month', async (req, res) => {
 
   // API 정보
   const apiName = '타임라인 조회 API';
   console.log(apiName);
 
   // 파라미터값 누락 확인
-  if (!req.params.user_id || !req.params.dog_id) {
+  if (!req.params.user_id || !req.params.dog_id|| !req.params.year|| !req.params.month) {
     console.log('req.params %o:', req.params);
     return resCode.returnResponseCode(res, 1002, apiName, null, null);
   } 
