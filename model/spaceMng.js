@@ -16,6 +16,34 @@ const s3 = new AWS.S3();
 function spaceMng() { }
 
 
+
+/** 댓글 수정 
+ * 1. 댓글 수정쿼리 날리기
+ * 2. 수정한 댓글 정보 응답
+*/
+spaceMng.prototype.changeComment = async (query) => { 
+    
+    // 1. 댓글 수정쿼리 날리기
+    let res = await mySQLQuery(await changeComment(query))
+    console.log('res %o:', res);
+    
+
+    // 2. 수정한 댓글 정보 응답
+    if (res.changedRows == 1) {  // 1개 레코드 수정됐으면 성공
+        
+        // 댓글 전체
+        let comment_info = await mySQLQuery(await selectTheDiaryComment(query.comment_id)) // 해당댓글 조회 
+        console.log('comment_info %o:', comment_info); 
+        if (comment_info.length == 0) return 1005;
+
+        // 최종응답값에 들어갈 데이터
+        return {
+            comment_info
+        } 
+    } else return 1005
+}
+
+
 /** 댓글 모두보기
  * 1. 댓글 전체 응답 (Comment 테이블)
 */
@@ -615,7 +643,19 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
     }
 }
 //------------------------- 쿼리 -------------------------
+// 일기 댓글 수정 쿼리문 작성
+async function changeComment(query) {
+    console.log(`일기 댓글 수정 쿼리문 작성`)
+    console.log('query %o:', query);
 
+    return {  
+        text: `UPDATE COMMENT 
+                SET comment_text = ?,
+                update_at = now()
+                WHERE comment_id = ? `, 
+        params: [query.comment_text, query.comment_id] 
+    }; // 파라미터 4개
+}
 
 // 일기 댓글 작성 쿼리문 작성
 async function addComment(query) {
@@ -640,6 +680,20 @@ async function selectDiaryCommentCount(diary_id) {
                 WHERE COMMENT.diary_id = ?;
         `, 
         params: [diary_id] 
+    }; 
+}
+
+// 일기 해당 댓글 조회 쿼리문 작성 
+async function selectTheDiaryComment(comment_id) {
+    console.log(`일기 해당 댓글 조회 쿼리문 작성`)
+
+    return { 
+        text: `SELECT COMMENT.comment_id, USER.user_name, COMMENT.comment_text
+                FROM COMMENT
+                INNER JOIN USER ON COMMENT.user_id = USER.user_id
+                WHERE COMMENT.comment_id = ? ; 
+        `, 
+        params: [comment_id] 
     }; 
 }
 
