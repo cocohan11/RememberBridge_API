@@ -269,7 +269,7 @@ router.get('/timeline/:user_id/:dog_id/:year/:month', async (req, res) => {
 })
 
 /** 일기 수정 API */
-router.post('/diary/edit', uploadForTimelines.array('dairy_imgs', 5), async (req, res) => { // 최대 5장
+router.post('/diary/edit', uploadForTimelines.array('diary_imgs', 5), async (req, res) => { // 최대 5장
 
   // API 정보
   const apiName = '추억 일기 수정 API';
@@ -355,7 +355,7 @@ router.get('/diary/info/:diary_id?', async (req, res) => {
 })
 
 /** 일기 작성 API */
-router.post('/diary', uploadForTimelines.array('dairy_imgs', 5), async (req, res) => { // 최대 5장
+router.post('/diary', uploadForTimelines.array('diary_imgs', 5), async (req, res) => { // 최대 5장
 
   // API 정보
   const apiName = '추억일기 등록 API';
@@ -512,7 +512,7 @@ router.get('/test', async (req, res) => {
 })
 
 /** test) multer 다중사진 API */
-router.post('/test/multer', uploadForTimelines.array('dairy_imgs', 3), async (req, res) => { // 최대 3장
+router.post('/test/multer', uploadForTimelines.array('diary_imgs', 3), async (req, res) => { // 최대 3장
 
   // API 정보
   const apiName = 'test) multer 다중사진 API';

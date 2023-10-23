@@ -298,14 +298,14 @@ spaceMng.prototype.getTimeline = async (query) => {
 
 
     // 3. DB) 일기 데이터 얻기
-    let dairy_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate))
-    console.log('dairy_info %o:', dairy_info);
+    let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate))
+    console.log('diary %o:', diary_info);
 
 
     // 일기를 "diary_id"를 기준으로 그룹화할 객체
     const groupedDiaries = {};
     console.log('groupedDiaries 비어있음 %o:', groupedDiaries);
-    dairy_info.forEach((result) => {
+    diary_info.forEach((result) => {
         const { diary_id, diary_content, photo_url, select_date } = result;
         if (!groupedDiaries[select_date]) {  // select_date 키로 된 객체가 없다면
             groupedDiaries[select_date] = {};  // 새로운 빈 객체를 만들어 해당 키(select_date)로 추가한다.
@@ -321,7 +321,7 @@ spaceMng.prototype.getTimeline = async (query) => {
     return {
         dog_info: dog_info,
         user_info: user_info,
-        dairy_info: groupedDiaries,
+        diary_info: groupedDiaries,
     }; // 원하는 출력 모양을 추가함
 }
 
