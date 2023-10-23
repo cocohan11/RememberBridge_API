@@ -13,6 +13,32 @@ const uploadForBackground = multerMid('memory_space/background');  // 추억공�
 
 
 //--------------------------------------------------------
+/** 댓글 모두보기 API */
+router.get('/diary/comment/:diary_id?', async (req, res) => {
+
+  // API 정보
+  const apiName = '댓글 모두보기 API';
+  console.log(apiName);
+
+  // 파라미터값 누락 확인
+  if (!req.params.diary_id) {
+    console.log('req.params %o:', req.params);
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const plusResult = await spaceMngDB.getDiaryComments(req.params);
+  console.log('plusResult %o:', plusResult); 
+
+  // response
+  if (plusResult != 9999 && plusResult != 1005 && plusResult != undefined) {
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, plusResult, apiName, null, null);
+  }
+
+})
+
 /** 댓글 작성 API */
 router.post('/diary/comment', async (req, res) => { 
 

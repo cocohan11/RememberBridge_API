@@ -16,6 +16,24 @@ const s3 = new AWS.S3();
 function spaceMng() { }
 
 
+/** 댓글 모두보기
+ * 1. 댓글 전체 응답 (Comment 테이블)
+*/
+spaceMng.prototype.getDiaryComments = async (query) => {
+    
+    // 2. 댓글 전체
+    let comment_info = await mySQLQuery(await selectDiaryComment(query.diary_id, 1000)) // 최신댓글 1000개 조회 
+    console.log('comment_info %o:', comment_info); 
+    if (comment_info.length == 0) return 1005;
+
+
+    // 최종응답값에 들어갈 데이터
+    return {
+        comment_info
+    }
+}
+
+
 /** 댓글 작성
  * 1. 댓글 작성
  * 2. 댓글 갯수
