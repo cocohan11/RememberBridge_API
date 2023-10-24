@@ -6,8 +6,34 @@ const appRoot = require("app-root-path");
 const { createLogger } = require("winston");
 const process = require("process"); // 프로그램과 관련된 정보를 나타내는 객체 모듈
 const logDir = `${appRoot}/logs`; // logs 디렉토리 하위에 로그 파일 저장
-
+const colorizer = winston.format.colorize();
 const { combine, timestamp, printf } = winston.format;
+/** Logging Levels
+{
+  error: 0,
+  warn: 1,
+  info: 2,
+  http: 3,
+  verbose: 4,
+  debug: 5,
+  silly: 6
+}
+*/
+const myCustomLevels = {
+  levels: {
+    error: 0,
+    http: 1,
+    info: 2,
+    debug: 3,
+  },
+  colors: {
+    error: 'red yellowBG',
+    http: 'cyan', // 파란색
+    info: 'green',
+    debug: 'magenta', // 자주색
+  }
+};
+colorizer.addColors(myCustomLevels.colors);
 
 //* log 출력 포맷 정의 함수
 const logFormat = printf(({ timestamp, level, message }) => {
@@ -25,7 +51,7 @@ const logger = createLogger({
   transports: [
     new winstonDaily({
       // log 파일 설정
-      level: "info", // 심각도
+      level: "debug", // 레벨 0~3까지 로그파일에 저장됨
       datePattern: "YYYY-MM-DD", // 날짜포맷방식
       dirname: logDir, // 디렉토리 파일 이름 설정
       filename: "%DATE%.log", // 파일이름 설정, %DATE% - 자동으로 날짜가 들어옴
@@ -46,8 +72,9 @@ const logger = createLogger({
 
 logger.add(
     new winston.transports.Console({
+      level: 'debug', // 레벨 0~3까지 콘솔에 출력됨
       format: winston.format.combine(
-        winston.format.colorize(),
+        winston.format.colorize({ all: true }), // 카테고리뿐만아니라 전체문자열 색상화
         winston.format.printf(({ timestamp, level, message }) => {
           return `${timestamp}  [${level}]:  ${message}`;
         })
