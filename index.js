@@ -6,6 +6,8 @@ const fs = require('fs'); // 파일을 읽어나 쓰는 모듈
 const bodyParser = require('body-parser'); // POST요청시 들어오는 BODY를 처리하기 위해 body-parser 설정
 const cors = require('cors'); // 서버에서 CORS 허용을 하기 위한 모듈 // 외부 리소스 접근권한을 http헤더에 넣어주기
 const cookieParser = require('cookie-parser');
+const logger = require("./winston/logger");
+const morganMiddleware = require('./util/morganMid');
 require('dotenv').config(); //.env라는 파일에 정보를 저장하고, 그 안의 정보를 환경변수로 등록해주는 모듈
 
 app.use('/util', express.static(path.join(__dirname, 'util'))); //util경로에 있는 파일들을 읽기위한 처리
@@ -15,6 +17,10 @@ app.use(cors()); // 전체허용
 // app.use(cors({ origin: '1.220.248.206', credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(morganMiddleware);
+
+
+logger.info("hello world this is index.js");
 
 // 포트설정
 app.listen(process.env.PORT, function () {

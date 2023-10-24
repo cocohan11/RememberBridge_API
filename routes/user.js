@@ -4,6 +4,7 @@ const router = express.Router();
 const userMngDB = require('../model/userMng');
 const resCode = require('../util/resCode');
 const jwt = require('jsonwebtoken');
+const logger = require("../winston/logger");
 const multerMid = require('../util/multerMid');
 
 
@@ -504,6 +505,7 @@ router.post('/auth/accessToken/:email?', async (req, res) => { // refreshTokenìœ
 const multer = require('multer');
 const multerS3 = require('multer-s3');
 const { S3Client } = require('@aws-sdk/client-s3');
+require("aws-sdk/lib/maintenance_mode_message").suppress = true;
 // const s3 = new AWS.S3();
 const path = require('path');
 
@@ -540,6 +542,7 @@ router.post('/img', upload.single('img'), (req, res) => {
 //test API
 router.get('/test', async (req, res) => {
     console.log('test');
+    logger.info("this is testddd");
 
     const sql = `select * from USER`;
     const dbPool = require('../util/dbPool');
