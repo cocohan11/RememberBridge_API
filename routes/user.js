@@ -115,36 +115,6 @@ router.get('/info/:user_email?', async (req, res) => {
 
 })
 
-/** 이메일 중복확인 API */
-router.get('/email/check/:user_email?', async (req, res) => {
-    // API 정보
-    const apiName = '이메일 중복확인 API dddd';
-    logger.http({
-        'API': apiName,
-        reqParams: req.params
-    });
-
-    // 파라미터값 누락 확인
-    if (!req.params.user_email) {
-        return resCode.returnResponseCode(res, 1002, apiName, null, null);
-    }
-
-    // DB
-    const user = await userMngDB.checkEmail(req.params, apiName);
-    logger.info({
-        API: apiName,
-        user: user
-    });  
-
-    // response
-    if (user == 2000) {
-        return resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳
-    } else if (user == 1009) {
-        return resCode.returnResponseCode(res, 1009, apiName, null, null); // 실패(중복)시 응답받는 곳
-    } else {
-        return resCode.returnResponseCode(res, 9999, apiName, null, null);
-    }
-});
 
 /** SNS 회원탈퇴(카카오, 네이버) API */
 router.post('/leave/sns', async (req, res) => {

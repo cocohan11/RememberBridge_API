@@ -23,7 +23,7 @@ function userMng() {}
 userMng.prototype.setUserImg = async (query, url, apiName) => {
     try {
         logger.debug({
-            'API': apiName,
+            API: apiName,
             params: query,
             url: url,
         });
@@ -519,7 +519,7 @@ userMng.prototype.addUser = (query, apiName) => {
 
     // 회원가입 쿼리문 작성
     async function insertUser(query) {
-        user_pw = await toHashPassword(query.user_pw);
+        user_pw = await toHashPassword(query.user_pw, apiName);
 
         // 만들 조건문 : sns회원인지 일반회원인지
         // 비번 해싱
@@ -557,7 +557,8 @@ userMng.prototype.addUser = (query, apiName) => {
 async function leaveUser(query, apiName) {
     logger.debug({
         API: apiName+' 쿼리문 작성',
-        params: query
+        params: query,
+        function: 'leaveUser()',
     });
 
     return {
@@ -950,10 +951,10 @@ async function changePassword(query, randomCode, apiName) {
     });
 
     if (randomCode) { // 임시비밀번호
-        user_pw = await toHashPassword(randomCode); // 랜덤값넣기
+        user_pw = await toHashPassword(randomCode, apiName); // 랜덤값넣기
         
     } else { // 비밀번호 변경
-        user_pw = await toHashPassword(query.user_pw);
+        user_pw = await toHashPassword(query.user_pw, apiName);
         logger.debug('변경할 비번(랜덤코드)' + query.user_pw);
     }
 
