@@ -12,7 +12,7 @@ const format = () => {
 // 로그 작성을 위한 Output stream옵션.
 const stream = {
     write: (message) => {
-      logger.info(
+      logger.http(
         message.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "")
       );
     },
@@ -32,7 +32,6 @@ const morganMiddleware = morgan(format(), { stream, skip });
 morgan('dev', {
    stream = {
        write: (message) => {
-          // console.log(message);
           logger.info(message);
        },
     },

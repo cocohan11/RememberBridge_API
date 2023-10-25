@@ -8,6 +8,7 @@ const process = require("process"); // 프로그램과 관련된 정보를 나�
 const logDir = `${appRoot}/logs`; // logs 디렉토리 하위에 로그 파일 저장
 const colorizer = winston.format.colorize();
 const { combine, timestamp, printf } = winston.format;
+const util = require("util");
 /** Logging Levels
 {
   error: 0,
@@ -27,18 +28,19 @@ const myCustomLevels = {
     debug: 3,
   },
   colors: {
-    error: 'red yellowBG',
-    http: 'cyan', // 파란색
-    info: 'green',
-    debug: 'magenta', // 자주색
-  }
+    error: "red yellowBG",
+    http: "cyan", // 파란색
+    info: "green",
+    debug: "gray",
+    // debug: 'magenta', // 자주색
+  },
 };
 colorizer.addColors(myCustomLevels.colors);
 
 //* log 출력 포맷 정의 함수
 const logFormat = printf(({ timestamp, level, message }) => {
-    return `${timestamp}  [${level}]:  ${message}`; // 날짜 [시스템이름] 로그레벨 메세지
- });
+  return `${timestamp}  [${level}]:  ${JSON.stringify(message, null, 2)}`; // 날짜 [시스템이름] 로그레벨 메세지
+});
 
 const logger = createLogger({
   format: combine(
@@ -71,17 +73,16 @@ const logger = createLogger({
 });
 
 logger.add(
-    new winston.transports.Console({
-      level: 'debug', // 레벨 0~3까지 콘솔에 출력됨
-      format: winston.format.combine(
-        winston.format.colorize({ all: true }), // 카테고리뿐만아니라 전체문자열 색상화
-        winston.format.printf(({ timestamp, level, message }) => {
-          return `${timestamp}  [${level}]:  ${message}`;
-        })
-      ),
-    })
-  );
-  
+  new winston.transports.Console({
+    level: "debug", // 레벨 0~3까지 콘솔에 출력됨
+    format: winston.format.combine(
+      winston.format.colorize({ all: true }), // 카테고리뿐만아니라 전체문자열 색상화
+      winston.format.printf(({ timestamp, level, message }) => {
+        return `${timestamp}  [${level}]:  ${message}`;
+      })
+    ),
+  })
+);
 
 // 4. logger 내보내기
 module.exports = logger;

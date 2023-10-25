@@ -28,20 +28,23 @@ router.post('/mypage/change/img', uploadForUser.single('user_prof_img'), async (
 
     // API 정보
     const apiName = '마이페이지 유저 프로필사진 수정 API';
-    console.log(apiName);
-   
-    // 사진 확인
-    console.log('req.file', req.file);
+    logger.http({
+        API: apiName,
+        reqBody: req.body,
+        reqFile: req.file
+    });
   
     // 파라미터값 누락 확인
     if (!req.file || !req.body.user_email) { // 사진 필수
-      console.log('req.body %o:', req.body);
       return resCode.returnResponseCode(res, 1002, apiName, null, null);
     } 
   
     // DB
-    const result = await userMngDB.setUserImg(req.body, req.file ? req.file.location : null); // .location에서 에러나서 null처리함
-    console.log('result %o:', result); // 성공시) result=2000 응답
+    const result = await userMngDB.setUserImg(req.body, req.file ? req.file.location : null, apiName); // .location에서 에러나서 null처리함
+    logger.info({
+        API: apiName,
+        result: result
+    }); // 성공시) result=2000 응답
   
     // response
     if (result == 2000) {
@@ -57,16 +60,22 @@ router.post('/mypage/change/img', uploadForUser.single('user_prof_img'), async (
 // Params : user_email, user_name
 router.post('/mypage/change/name', async (req, res) => {
     const apiName = '마이페이지 유저 정보 수정 API';
-    console.log('API : ', apiName);
-    console.log('req.body, %o:', req.body);
+    logger.http({
+        API: apiName,
+        reqBody: req.body
+    });
+
 
     // 파라미터 누락 확인
     if (!req.body.user_name || !req.body.user_email) {
-        console.log('누락 파라미터 확인  : %o ', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
     // DB
-    const user = await userMngDB.setUserName(req.body);
+    const user = await userMngDB.setUserName(req.body, apiName);
+    logger.info({
+        API: apiName,
+        user: user
+    });
 
     // response
     if (user && user != 1005 && user != 9999) {
@@ -79,16 +88,21 @@ router.post('/mypage/change/name', async (req, res) => {
 });
 
 /** 회원 정보 조회 API */
-router.use('/info/:user_email?', userMngDB.authMiddleware);
+// router.use('/info/:user_email?', userMngDB.authMiddleware);
 router.get('/info/:user_email?', async (req, res) => {
     // API 정보
     const apiName = '회원 정보 조회 API';
-    console.log(apiName);
-    console.log('req.params %o:', req.params);
+    logger.http({
+        API: apiName,
+        reqBody: req.body
+    });
 
   // DB
-  const user = await userMngDB.getUser(req.params); 
-  console.log('user.js user is %o:', user);
+  const user = await userMngDB.getUser(req.params, apiName); 
+  logger.info({
+    API: apiName,
+    user: user
+  });  
 
   // response
   if (user && user!=1005 && user!=9999) {
@@ -105,18 +119,22 @@ router.get('/info/:user_email?', async (req, res) => {
 router.get('/email/check/:user_email?', async (req, res) => {
     // API 정보
     const apiName = '이메일 중복확인 API dddd';
-    console.log(apiName);
-    console.log('req.params %o:', req.params);
+    logger.http({
+        'API': apiName,
+        reqParams: req.params
+    });
 
     // 파라미터값 누락 확인
     if (!req.params.user_email) {
-        console.log('req.params %o:', req.params);
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
     // DB
-    const user = await userMngDB.checkEmail(req.params);
-    console.log('user %o:', user);
+    const user = await userMngDB.checkEmail(req.params, apiName);
+    logger.info({
+        API: apiName,
+        user: user
+    });  
 
     // response
     if (user == 2000) {
@@ -132,27 +150,33 @@ router.get('/email/check/:user_email?', async (req, res) => {
 router.post('/leave/sns', async (req, res) => {
     // API 정보
     const apiName = 'SNS 회원탈퇴 API';
-    console.log(apiName);
-    console.log('req.body %o:', req.body);
+    logger.http({
+        API: apiName,
+        reqBody: req.body
+    });
 
     // 파라미터값 누락 확인
     if (!req.body.login_sns_type || !req.body.user_email) {
-        console.log('req.body %o:', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
     try {
         // DB에 SNS 회원가입 정보 추가
-        const kakaoId = await userMngDB.leaveSns(req.body);
-        console.log('kakaoId hh %o:', kakaoId);
-
+        const kakaoId = await userMngDB.leaveSns(req.body, apiName);
+        logger.info({
+            API: apiName,
+            kakaoId: kakaoId
+        }); 
         if (kakaoId) {
             return resCode.returnResponseCode(res, 2000, apiName, null, null);
         } else {
             return resCode.returnResponseCode(res, 9999, apiName, null, null);
         }
     } catch (error) {
-        console.error('에러 발생:', error);
+        logger.error({
+            API: apiName,
+            error: error
+        });
         return resCode.returnResponseCode(res, 9999, apiName, null, null);
     }
 });
@@ -161,27 +185,34 @@ router.post('/leave/sns', async (req, res) => {
 router.post('/logout/sns', async (req, res) => {
     // API 정보
     const apiName = 'SNS 로그아웃 API';
-    console.log(apiName);
-    console.log('req.body %o:', req.body);
+    logger.http({
+        API: apiName,
+        reqBody: req.body
+    });
+
 
     // 파라미터값 누락 확인
     if (!req.body.login_sns_type || !req.body.user_email) {
-        console.log('req.body %o:', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
     try {
         // DB에 SNS 회원가입 정보 추가
-        const kakaoId = await userMngDB.logoutSns(req.body);
-        console.log('kakaoId hh %o:', kakaoId);
-
+        const kakaoId = await userMngDB.logoutSns(req.body, apiName);
+        logger.info({
+            API: apiName,
+            kakaoId: kakaoId
+        });
         if (kakaoId) {
             return resCode.returnResponseCode(res, 2000, apiName, null, null);
         } else {
             return resCode.returnResponseCode(res, 9999, apiName, null, null);
         }
     } catch (error) {
-        console.error('에러 발생:', error);
+        logger.error({
+            API: apiName,
+            error: error
+        });
         return resCode.returnResponseCode(res, 9999, apiName, null, null);
     }
 });
@@ -190,35 +221,45 @@ router.post('/logout/sns', async (req, res) => {
 router.post('/join/sns', async (req, res) => {
     // API 정보
     const apiName = 'SNS 회원가입/로그인 API';
-    console.log(apiName);
+    logger.http({
+        'API': apiName,
+        reqBody: req.body
+    });
+
 
     // 파라미터값 누락 확인
     if (!req.body.login_sns_type || !req.body.code) {
-        console.log('req.body %o:', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
     try {
         // DB에 SNS 회원가입 정보 추가
-        const user = await userMngDB.addSnsUser(req.body);
-        console.log('user hh %o:', user);
-
+        const user = await userMngDB.addSnsUser(req.body, apiName);
+        logger.info({
+            API: apiName,
+            user: user
+        });
         // 동기적으로 실행하고 싶은 코드
         const tokens = await userMngDB.signJWT(user);
-        console.log('tokens %o:', tokens);
-
+        logger.info({
+            API: apiName,
+            tokens: tokens
+        });
         if (tokens) {
             const plusResult = {
                 access_token: tokens.accessToken,
                 refresh_token: tokens.refreshToken,
                 userInfo: user,
             };
-            return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
+            return resCode.returnResponseCode(res, 2000, apiName, 'addToResult' + plusResult);
         } else {
             return resCode.returnResponseCode(res, 9999, apiName, null, null);
         }
     } catch (error) {
-        console.error('에러 발생:', error);
+        logger.error({
+            API: apiName,
+            error: error
+        });
         return resCode.returnResponseCode(res, 9999, apiName, null, null);
     }
 });
@@ -230,18 +271,23 @@ router.post('/leave', async (req, res) => {
 
     // API 정보
     const apiName = '일반회원탈퇴 API';
-    console.log(apiName);
+    logger.http({
+        'API': apiName,
+        reqBody: req.body
+    });
+
 
     // 파라미터값 누락 확인
     if (!req.body.user_email) {
-        console.log('req.body %o:', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null); //
     }
 
     // DB
-    const result = await userMngDB.leaveUser(req.body);
-    console.log('result %o:', result);
-
+    const result = await userMngDB.leaveUser(req.body, apiName);
+    logger.info({
+        API: apiName,
+        result: result
+    });
     // response
     if (result == 9999) {
         return resCode.returnResponseCode(res, 9999, apiName, null, null);
@@ -258,18 +304,23 @@ router.post('/tempPassword', async (req, res) => {
 
     // API 정보
     const apiName = '비밀번호 임시발급 API';
-    console.log(apiName);
+    logger.http({
+        'API': apiName,
+        reqBody: req.body
+    });
+
 
     // 파라미터값 누락 확인
     if (!req.body.user_email) {
-        console.log('req.body %o:', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null); //
     }
 
     // DB
-    const result = await userMngDB.tempPassword(req.body);
-    console.log('result %o:', result);
-
+    const result = await userMngDB.tempPassword(req.body, apiName);
+    logger.info({
+        API: apiName,
+        result: result
+    });
     // response
     if (result == 9999) {
         return resCode.returnResponseCode(res, 9999, apiName, null, null);
@@ -289,18 +340,23 @@ router.post('/changePassword', async (req, res) => {
 
     // API 정보
     const apiName = '비밀번호 변경 API';
-    console.log(apiName);
+    logger.http({
+        'API': apiName,
+        reqBody: req.body
+    });
+
 
     // 파라미터값 누락 확인
     if (!req.body.user_email || !req.body.user_pw) {
-        console.log('req.body %o:', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null); //
     }
 
     // DB
-    const result = await userMngDB.changePassword(req.body);
-    console.log('result %o:', result);
-
+    const result = await userMngDB.changePassword(req.body, apiName);
+    logger.info({
+        API: apiName,
+        result: result
+    });
     // response
     if (result == 9999) {
         return resCode.returnResponseCode(res, 9999, apiName, null, null);
@@ -315,18 +371,23 @@ router.post('/changePassword', async (req, res) => {
 router.post('/email', async (req, res) => {
     // API 정보
     const apiName = '이메일 인증 API';
-    console.log(apiName);
+    logger.http({
+        'API': apiName,
+        reqBody: req.body
+    });
+
 
     // 파라미터값 누락 확인
     if (!req.body.user_email) {
-        console.log('req.body %o:', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null); //
     }
 
     // DB
-    const emailVerificationCode = await userMngDB.sendEmail(req.body);
-    console.log('emailVerificationCode %o:', emailVerificationCode);
-
+    const emailVerificationCode = await userMngDB.sendEmail(req.body, apiName);
+    logger.info({
+        API: apiName,
+        emailVerificationCode: emailVerificationCode
+    });
     // response
     if (emailVerificationCode == 9999) {
         return resCode.returnResponseCode(res, 9999, apiName, null, null);
@@ -343,22 +404,29 @@ router.post('/login', async (req, res) => {
 
     // API 정보
     const apiName = '일반회원 로그인 API';
-    console.log(apiName);
+    logger.http({
+        'API': apiName,
+        reqBody: req.body
+    });
+
     
     // 파라미터값 누락 확인
     if (!req.body.user_email || !req.body.user_pw) {
-        console.log('req.body %o:', req.body);
         return resCode.returnResponseCode(res, 1002, apiName, null, null); //O
     } 
 
     // DB
-    const user = await userMngDB.loginUser(req.body); 
-    console.log('user is... %o:', user);
-  
+    const user = await userMngDB.loginUser(req.body, apiName); 
+    logger.info({
+        API: apiName,
+        user: user
+    });
     if (user != 9999 && user != 2009) { // 회원정보 일치한다면
         const tokens = await userMngDB.signJWT(user);
-        console.log('tokens %o:', tokens);
-
+        logger.info({
+            API: apiName,
+            tokens: tokens
+        });
         if (tokens) {
             const plusResult = { // 원하는 출력 모양을 추가함
                 access_token: tokens.accessToken,
@@ -389,18 +457,23 @@ router.post('/join', async (req, res) => {
 
     // API 정보
     const apiName = '일반 회원가입 API';
-    console.log(apiName);
+    logger.http({
+        'API': apiName,
+        reqBody: req.body
+    });
+
    
     // 파라미터값 누락 확인
     if (!req.body.user_email || !req.body.user_pw) {
-      console.log('req.body %o:', req.body);
       return resCode.returnResponseCode(res, 1002, apiName, null, null);
     } 
   
     // DB
-    const user = await userMngDB.addUser(req.body); 
-    console.log('user %o:', user);
-  
+    const user = await userMngDB.addUser(req.body, apiName); 
+    logger.info({
+        API: apiName,
+        user: user
+    });
     // response
     if (user == 2000) {
       // 성공시 응답받는 곳
@@ -417,49 +490,61 @@ router.post('/join', async (req, res) => {
 /** accessToken 재발급 API */
 router.post('/auth/accessToken', async (req, res) => { // refreshToken으로 재발급
 
-  // API 정보
-  const apiName = 'accessToken 재발급 API';
-  console.log(apiName);
- 
-  // 파라미터값 누락 확인
-  const refreshToken = req.headers['refresh'] // 프론트에서 요청헤더에 담아서 보냄
-  console.log("refreshToken is.. " + refreshToken)
-
-  if (!refreshToken) {
-    console.log('refreshToken %o:', refreshToken);
+    // API 정보
+    const apiName = 'accessToken 재발급 API';
+    const refreshToken = req.headers['refresh'] // 프론트에서 요청헤더에 담아서 보냄
+    logger.info({
+        API: apiName,
+        refreshToken: refreshToken
+    });
+    
+    // 파라미터값 누락 확인
+    if (!refreshToken) {
+    logger.info('refreshToken %o:' + refreshToken);
     return resCode.returnResponseCode(res, 3002, apiName, null, null);
-  } 
+    } 
 
-  // DB
-  const data = await userMngDB.RenewalAccessToken(refreshToken); 
-  console.log('data %o:', data);
-
-  // response
-  if (data == 3009 || data == undefined) {
+    // DB
+    const data = await userMngDB.RenewalAccessToken(refreshToken, apiName); 
+    logger.info({
+        API: apiName,
+        data: data
+    });
+    // response
+    if (data == 3009 || data == undefined) {
     return resCode.returnResponseCode(res, 3009, apiName, null, null);
-  } else if (data == 1005) {
+    } else if (data == 1005) {
     return resCode.returnResponseCode(res, 1005, apiName, null, null);
-  } else {
+    } else {
     // 성공시 응답받는 곳
     const plusResult = data; // 원하는 출력 모양을 추가함
     return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
-  }
+    }
 
 })
 
 // test
 router.post('/auth/accessToken/:email?', async (req, res) => { // refreshToken으로 재발급
-  console.log('accessToken 재발급 API')
+  
+  const apiName = 'accessToken 재발급 API';
   try {
     const token = req.headers['refresh'] || req.query.token // 프론트에서 요청헤더에 담아서 보냄
-    console.log("refreshToken is.. " + token)
-    console.log('jwt.decode(token) %o:', jwt.decode(token));
-    
+    logger.info({
+        API: apiName,
+        refreshToken: token,
+        jwtDecode: jwt.decode(token)
+    });
 
     jwt.verify(token, "refreshsecret", (error, decoded) => {
-        console.log(`jwt.verify`);
-        if(error){
-          console.log(`에러가 났습니다\n ${error}`);
+        logger.info({
+            API: apiName,
+            jwt: 'verify'
+        }); 
+        if (error) {
+            logger.error({
+                API: apiName,
+                error: error
+            });
           res.json("refreshToken fail", error);
         } else {
           // 액세스 토큰의 페이로드에서 사용자정보 가져오기
@@ -467,11 +552,12 @@ router.post('/auth/accessToken/:email?', async (req, res) => { // refreshToken�
       
           // 토큰 발급
           if (!token) { 
-            console.log('!rows');
+            logger.info({
+                API: apiName,
+                token: null
+            }); 
             res.json("refreshToken fail");
           } else {
-            console.log('rows');
-            
             // accessToken 새로 발급
             const accessToken = jwt.sign({
               user_id: userInfo.user_id,
@@ -483,7 +569,11 @@ router.post('/auth/accessToken/:email?', async (req, res) => { // refreshToken�
             });
 
             // 토큰 전달하기
-            console.log('dddd.. '+accessToken);
+            logger.info({
+                API: apiName,
+                accessToken: accessToken
+            }); 
+              
             res.setHeader('Access-Control-Allow-Credentials', 'true'); 
             res.status(200).json(
               {
@@ -534,15 +624,17 @@ const upload = multer({
 
 // test img API
 router.post('/img', upload.single('img'), (req, res) => {
-  console.log('req.file', req.file);
-  console.log('req.body', req.body);
+    logger.http({
+        'API': apiName,
+        reqBody: req.body,
+        reqFile: req.file
+    });
   res.json({ url: req.file.location });
 });
 
 //test API
 router.get('/test', async (req, res) => {
-    console.log('test');
-    logger.info("this is testddd");
+    logger.info('test');
 
     const sql = `select * from USER`;
     const dbPool = require('../util/dbPool');
@@ -565,10 +657,10 @@ router.get('/test/check_token', (req, res) => {
     let token = req.headers['token'];
     try {
         let payload = jwt.verify(token, 'our_secret');
-        console.log('토큰 인증 성공', payload);
+        logger.info('토큰 인증 성공' + payload);
         res.json({ msg: 'success' });
     } catch (err) {
-        console.log('인증 에러');
+        logger.error('인증 에러');
         res.status(405).json({ msg: 'error' });
         next(err);
     }
@@ -580,32 +672,32 @@ router.get('/test/sign_token', (req, res) => {
 });
 // test) verifyToken API
 router.get('/test/verifyToken', async (req, res) => {
-    console.log('verifyToken API');
+    logger.info('verifyToken API');
     const token = jwt.sign({ email: 'test@user.com' }, 'our_secret', {
         expiresIn: '1s',
     });
     await new Promise((r) => setTimeout(r, 100));
     const verified = jwt.verify(token, 'our_secret');
     if (verified) {
-        console.log('verified');
+        logger.info('verified');
     } else {
-        console.log('!verified'); // 여기로 안 들어오고 에러가 나버리네
+        logger.info('!verified'); // 여기로 안 들어오고 에러가 나버리네
     }
-    // console.log(verified);
+    // logger.info(verified);
 });
 // test) refreshToken로 액세스토큰 재발급 API
 router.get('/test/refreshToken/:email?', async (req, res) => {
-    console.log('refreshToken API');
+    logger.info('refreshToken API');
     try {
         const token = req.headers['refresh'] || req.query.token; // 프론트에서 요청헤더에 담아서 보냄
         // const token = req.cookies.refreshToken; // 브라우저에 저장된 토큰에서 토큰값가져오기
-        console.log('refreshToken is.. ' + token);
-        console.log('jwt.decode(token) %o:', jwt.decode(token));
+        logger.info('refreshToken is.. ' + token);
+        logger.info('jwt.decode(token) %o:' + jwt.decode(token));
 
         jwt.verify(token, 'refreshsecret', (error, decoded) => {
-            console.log(`jwt.verify`);
+            logger.info(`jwt.verify`);
             if (error) {
-                console.log(`에러가 났습니다\n ${error}`);
+                logger.info(`에러가 났습니다\n ${error}`);
                 res.json('refreshToken fail', error);
             } else {
                 // 액세스 토큰의 페이로드에서 사용자정보 가져오기
@@ -613,10 +705,10 @@ router.get('/test/refreshToken/:email?', async (req, res) => {
 
                 // 토큰 발급
                 if (!token) {
-                    console.log('!rows');
+                    logger.info('!rows');
                     res.json('refreshToken fail');
                 } else {
-                    console.log('rows');
+                    logger.info('rows');
 
                     // accessToken 새로 발급
                     const accessToken = jwt.sign(
@@ -633,7 +725,7 @@ router.get('/test/refreshToken/:email?', async (req, res) => {
                     );
 
                     // 토큰 전달하기
-                    console.log('dddd.. ' + accessToken);
+                    logger.info('dddd.. ' + accessToken);
                     res.setHeader('Access-Control-Allow-Credentials', 'true');
                     res.status(200).json({
                         data: {
@@ -651,17 +743,17 @@ router.get('/test/refreshToken/:email?', async (req, res) => {
 });
 // test) accessToken 확인하는 API
 router.get('/test/accessToken/:email?', async (req, res) => {
-    console.log('accessToken API');
+    logger.info('accessToken API');
     try {
         const token = req.headers['access'] || req.query.token; // 프론트에서 요청헤더에 담아서 보냄
         // const token = req.cookies.accessToken; // 브라우저에 저장된 토큰에서 토큰값가져오기
-        console.log(token);
+        logger.info(token);
         jwt.verify(token, 'accesssecret', (error, decoded) => {
             if (error) {
-                console.log(`에러가 났습니다\n ${error}`);
+                logger.info(`에러가 났습니다\n ${error}`);
                 res.json(`accessToken fail... ${error}`);
             } else {
-                console.log(decoded);
+                logger.info(decoded);
                 res.status(200).json({
                     data: decoded,
                     message: 'ok',
@@ -674,33 +766,33 @@ router.get('/test/accessToken/:email?', async (req, res) => {
 });
 // test) token 발급 API -> API생성 완료
 router.get('/test/token/:email?', async (req, res) => {
-    console.log('token API')
+    logger.info('token API')
     const email = req.params.email;
-    console.log("test/token");
-    console.log(email);
+    logger.info("test/token");
+    logger.info(email);
     const sql = `select * from USER where user_email = '${email}'`;
     const dbPool = require('../util/dbPool');
     const connection = dbPool.init();
   
     connection.query(sql, (err, rows) => {
       if (err) {
-        console.log(`샘플 에러: \n${JSON.stringify(err, null, 2)}`);
+        logger.info(`샘플 에러: \n${JSON.stringify(err, null, 2)}`);
       } else { 
         message = 'token tests API';
-        console.log(rows);
+        logger.info(rows);
         let userInfo = rows[0];
 
         // 토큰 발급
         if (!userInfo.user_id) { 
-          console.log('!rows');
+          logger.info('!rows');
 
           res.json("login fail");
         } else {
-          console.log('rows'); // 이메일 존재한다면(실제로는 비번까지 일치한다면) 토큰 발급
+          logger.info('rows'); // 이메일 존재한다면(실제로는 비번까지 일치한다면) 토큰 발급
           try {
             // accessToken 발급
-            console.log(userInfo.user_id);
-            console.log(userInfo.user_email);
+            logger.info(userInfo.user_id);
+            logger.info(userInfo.user_email);
             const accessToken = jwt.sign({
               user_id: userInfo.user_id,
               user_name: userInfo.user_name,

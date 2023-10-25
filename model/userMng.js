@@ -8,6 +8,7 @@ const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 const resCode = require('../util/resCode'); // 응답코드별 함수
 const axios = require('axios'); // http통신모듈
+const logger = require("../winston/logger");
 require("dotenv").config(); // 환경변수모듈
 const {
     JWT_ACCESS_TOKEN_KEY, JWT_REFRESH_TOKEN_KEY,
@@ -19,40 +20,59 @@ function userMng() {}
 
 
 /** 유저 정보 수정 - 프사 */
-userMng.prototype.setUserImg = async (query, url) => {
+userMng.prototype.setUserImg = async (query, url, apiName) => {
     try {
-        console.log('query %o', query);
-        console.log('url %o', url);
+        logger.debug({
+            'API': apiName,
+            params: query,
+            url: url,
+        });
         // 유저정보 수정 쿼리문 날리기
-        const res = await mySQLQuery(queryChangeUser_img(query, url));
-        console.log('유저정보 수정 결과 : ', res);
-
+        const res = await mySQLQuery(queryChangeUser_img(query, url, apiName));
+        logger.debug({
+            API: apiName,
+            '유저정보 수정 결과': res
+        });
         if (res.changedRows == 1) return 2000;
         else return 1005;
         
     } catch (error) {
-        console.log('에러', error);
+        logger.error({
+            API: apiName,
+            error: error
+        });
         return 9999;
     }
 };
 
 
 /** accessToken 재발급 */
-userMng.prototype.RenewalAccessToken = (refreshToken) => {
+userMng.prototype.RenewalAccessToken = (refreshToken, apiName) => {
     return new Promise((resolve, reject) => {
         // 토큰 검증하기
         jwt.verify(refreshToken, JWT_REFRESH_TOKEN_KEY, async (error, decoded) => {
-            console.log(`JWT 토큰, 시크릿키 검증함수`);
+            logger.debug({
+                API: apiName,
+                jwtVerify: `JWT 토큰, 시크릿키 검증함수`,
+            });
             if (error) {
-                console.log(`에러가 났습니다\n ${error}`);
+                logger.error({
+                    API: apiName,
+                    error: error
+                });
                 resolve(3009);
             } else {
-                console.log(`JWT 토큰, 시크릿키 검증 OK`);
+                logger.debug({
+                    API: apiName,
+                    jwtVerify: `JWT 토큰, 시크릿키 검증 OK`,
+                });
                 if (!refreshToken) {
-                    console.log('refreshToken이 비어있다.');
+                    logger.debug({
+                        API: apiName,
+                        refreshToken: `refreshToken이 비어있다.`,
+                    });
                     resolve(3002);
                 } else {
-                    console.log('rows');
                     // refreshToken 토큰의 페이로드에서 사용자정보 가져오기
                     const refresh_userInfo = jwt.decode(refreshToken); // 리프레시토큰의 유저정보
                     // accessToken 새로 발급
@@ -65,13 +85,18 @@ userMng.prototype.RenewalAccessToken = (refreshToken) => {
                         issuer : 'About Tech han. new accessToken',
                     });
 
-                    const res = await mySQLQuery(queryGetUser(refresh_userInfo)) // 쿼리문 실행 
-                    console.log('res check.. %o', res);
-                    console.log('res length.. %o', res.length);
+                    const res = await mySQLQuery(queryGetUser(refresh_userInfo, apiName)) // 쿼리문 실행 
+                    logger.debug({
+                        API: apiName,
+                        res: res,
+                        resLength: res.length,
+                    });
                     const res_user_info = await selectUserInfo(res[res.length-1]); // 유저정보 5개만 응답하기
-                    console.log('res_user_info.. %o', res_user_info);
+                    logger.debug({
+                        API: apiName,
+                        res_user_info: res_user_info,
+                    });
 
-                    
                     // 토큰 응답하기
                     resolve({ // 원하는 출력 모양을 추가함
                         access_token: accessToken,
@@ -86,14 +111,20 @@ userMng.prototype.RenewalAccessToken = (refreshToken) => {
 
 
 /** 회원 정보 조회 */
-userMng.prototype.getUser = async (query) => {
-    console.log('query %o:', query);
-  
+userMng.prototype.getUser = async (query, apiName) => {
+    logger.debug({
+        API: apiName,
+        params: query,
+    });
+
     // 회원 정보 조회 쿼리문 날리기
-    const user_info = await mySQLQuery(queryGetUser_noPW(query));
-    const space_info = await mySQLQuery(queryGetSpaceAndDog(query));
-    console.log('userInfo is:', user_info);
-    console.log('spaceInfo is:', space_info);
+    const user_info = await mySQLQuery(queryGetUser_noPW(query, apiName));
+    const space_info = await mySQLQuery(queryGetSpaceAndDog(query, apiName));
+    logger.debug({
+        API: apiName,
+        user_info: user_info,
+        space_info: space_info,
+    });
     
     return plusResult = {
         user_info: user_info[0],
@@ -102,46 +133,55 @@ userMng.prototype.getUser = async (query) => {
 }
 
 /** 유저 정보 수정 - 이름 */
-userMng.prototype.setUserName = async (query) => {
+userMng.prototype.setUserName = async (query, apiName) => {
     try {
-        console.log('최종 쿼리 %o', query);
-        // 유저정보 수정 쿼리문 날리기
-        const res = await mySQLQuery(queryChangeUser_info(query));
-        console.log('유저정보 수정 결과 : ', res);
-        const user = res;
+        logger.debug({
+            API: apiName,
+            params: query,
+        });
 
-        return 2000;
+        // 유저정보 수정 쿼리문 날리기
+        const res = await mySQLQuery(queryChangeUser_info(query, apiName));
+        logger.debug({
+            'API': apiName,
+            '유저정보 수정 결과': res
+        });
+
+        if (res.changedRows == 1) return 2000;
+        return 1005; // 조회안됨
+
     } catch (error) {
-        console.log('왜 에러야?', error);
+        logger.error({
+            API: apiName,
+            error: error
+        });
         return 9999;
     }
 };
 
-userMng.prototype.getMyPageInfo = async (query) => {
-    console.log('query %o:', query);
-    try {
-        const res = await mySQLQuery(queryGetUser_info(query));
-        const user = res[res.length - 1];
-        console.log(res);
-    } catch (error) {}
-
-    //
-};
-
 /** JWT 발급(access, refresh token) */
-userMng.prototype.signJWT = (userInfo) => {
-    console.log('userMng.prototype.signJWT');
-    console.log(userInfo);
+userMng.prototype.signJWT = (userInfo, apiName) => {
+    logger.debug({
+        API: apiName,
+        userInfo: userInfo,
+    });
 
     // 토큰 발급
     if (!userInfo) {
-        console.log('!userInfo');
+        logger.debug({
+            API: apiName,
+            userInfo: null,
+        });
         return 'login fail';
     } else {
-        console.log('userInfo.user_email : ' + userInfo.user_email);
+        logger.debug({
+            API: apiName,
+            userInfo_user_email: userInfo.user_email,
+            userInfo_user_id: userInfo.user_id,
+            userInfo_user_name: userInfo.user_name,
+        });
         try {
             // accessToken 발급
-            console.log(userInfo.user_id);
             const accessToken = jwt.sign({
                 user_id: userInfo.user_id,
                 user_name: userInfo.user_name,
@@ -159,9 +199,11 @@ userMng.prototype.signJWT = (userInfo) => {
                 expiresIn: '14d',
                 issuer : 'About Tech han2',
             });
-            console.log(accessToken);
-            console.log(refreshToken);
-
+            logger.debug({
+                API: apiName,
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+            });
             return (result = {
                 accessToken,
                 refreshToken,
@@ -177,20 +219,27 @@ userMng.prototype.signJWT = (userInfo) => {
  * 4. DB에서 유저 삭제
  * 회원탈퇴하면 카카오에서 로그아웃도 같이 진행시킨다.(==토큰만료) 
 */
-userMng.prototype.leaveSns = async (query) => { // 이메일, sns type
-    console.log('query 1 %o:', query);
-
+userMng.prototype.leaveSns = async (query, apiName) => { // 이메일, sns type
+    logger.debug({
+        API: apiName,
+        params: query,
+    });
     // DB에서 리프레시토큰 조회하기
-    const refresh_token_response = await mySQLQuery(queryGetRefreshToken(query.user_email));
+    const refresh_token_response = await mySQLQuery(queryGetRefreshToken(query.user_email, apiName));
     const refresh_token = refresh_token_response[0].refresh_token; // 토큰만 추출
-    console.log('refresh_token 1 %o:', refresh_token);
-
+    logger.debug({
+        API: apiName,
+        refresh_token: refresh_token,
+    });
     // TODO
     // 카카오인지 네이버인지 구분하기
 
     // 액세스토큰 갱신하기
     const kakaoAccessToken = await RenewalKakaoToken(refresh_token); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
-    console.log('access_token 1 %o:', kakaoAccessToken);
+    logger.debug({
+        API: apiName,
+        kakaoAccessToken: kakaoAccessToken,
+    });
 
     // 카카오 회원탈퇴 요청
     const {
@@ -200,12 +249,18 @@ userMng.prototype.leaveSns = async (query) => { // 이메일, sns type
             Authorization: `Bearer ${kakaoAccessToken}`,
         },
     });
-    console.log('kakaoId %o:', kakaoId); // 숫자리턴
+    logger.debug({
+        API: apiName,
+        kakaoId: kakaoId, // 숫자리턴
+    });
 
     // DB에서 리프레시토큰 삭제
     if (kakaoId) {
-        const result = await mySQLQuery(await leaveUser(query));
-        console.log('result %o:', result); // 숫자리턴
+        const result = await mySQLQuery(await leaveUser(query, apiName));
+        logger.debug({
+            API: apiName,
+            result: result, // 숫자리턴
+        });
     }
     return kakaoId;
 };
@@ -216,13 +271,16 @@ userMng.prototype.leaveSns = async (query) => { // 이메일, sns type
  * 3. SNS 로그아웃 요청
  * 4. DB에서 리프레시토큰 삭제
  */
-userMng.prototype.logoutSns = async (query) => {
+userMng.prototype.logoutSns = async (query, apiName) => {
     // 이메일, sns type
 
     // DB에서 리프레시토큰 조회하기
-    const refresh_token_response = await mySQLQuery(queryGetRefreshToken(query.user_email));
+    const refresh_token_response = await mySQLQuery(queryGetRefreshToken(query.user_email, apiName));
     const refresh_token = refresh_token_response[0].refresh_token; // 토큰만 추출
-    console.log('refresh_token 1 %o:', refresh_token);
+    logger.debug({
+        API: apiName,
+        refresh_token: refresh_token, 
+    });
 
     // DB에 리프레시토큰도 없다면 리프레시토큰 재발급받기
 
@@ -232,7 +290,10 @@ userMng.prototype.logoutSns = async (query) => {
 
     // 액세스토큰 갱신하기
     const kakaoAccessToken = await RenewalKakaoToken(refresh_token); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
-    console.log('access_token 1 %o:', kakaoAccessToken);
+    logger.debug({
+        API: apiName,
+        kakaoAccessToken: kakaoAccessToken, 
+    });
 
     // 카카오 로그아웃 요청
     const {
@@ -242,12 +303,18 @@ userMng.prototype.logoutSns = async (query) => {
             Authorization: `Bearer ${kakaoAccessToken}`,
         },
     });
-    console.log('kakaoId %o:', kakaoId); // 숫자리턴
+    logger.debug({
+        API: apiName,
+        kakaoId: kakaoId, 
+    });
 
     // DB에서 리프레시토큰 삭제
     if (kakaoId) {
-        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email));
-        console.log('result %o:', result); // 숫자리턴
+        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email, apiName));
+        logger.debug({
+            API: apiName,
+            result: result, 
+        });
     }
     return kakaoId;
 };
@@ -257,7 +324,7 @@ userMng.prototype.logoutSns = async (query) => {
  * 2. 유저정보조회
  * 4. DB에 회원정보없으면 회원가입하기
  */
-userMng.prototype.addSnsUser = async (query) => {
+userMng.prototype.addSnsUser = async (query, apiName) => {
     // 이메일 중복확인
     // 존재하는 이멜 -> 로그인
     // 존재하지 않는 이멜 -> 회원가입
@@ -266,19 +333,28 @@ userMng.prototype.addSnsUser = async (query) => {
 };
 
 /** 회원탈퇴 (일반, SNS 유저 포함)*/
-userMng.prototype.leaveUser = (query) => { // 논리삭제 (물리삭제X)
-    
+userMng.prototype.leaveUser = (query, apiName) => { // 논리삭제 (물리삭제X)
+    logger.debug({
+        API: apiName,
+        params: query, 
+    });
+
     // 회원탈퇴 쿼리문 날리기
     return new Promise(async (resolve, reject) => {
-        console.log(`회원탈퇴 쿼리문 날리기`)
-        mySQLQuery(await leaveUser(query)) // 쿼리문 실행 
+        mySQLQuery(await leaveUser(query, apiName)) // 쿼리문 실행 
             .then(async (res) => { 
-                console.log('회원탈퇴 res %o:', res);
+                logger.debug({
+                    API: apiName,
+                    res: res, 
+                });
                 if (res.affectedRows >= 1) return resolve(2000);
                 if (res.affectedRows < 1) return resolve(1005); // 테스트이후 수정하기
         })
         .catch((err) => {
-            console.log(`회원탈퇴 err: ${err} `)
+            logger.error({
+                API: apiName,
+                error: err
+            });
             return resolve(9999); 
         });
     }); 
@@ -289,7 +365,7 @@ userMng.prototype.leaveUser = (query) => { // 논리삭제 (물리삭제X)
  * 2. 이메일 전송
  * 3. 비밀번호 변경
  */
-userMng.prototype.tempPassword = async (query) => {
+userMng.prototype.tempPassword = async (query, apiName) => {
     return new Promise(async (resolve, reject) => {
         const randomCode = await createRandomCode(6); // 6자리
         const emailTitle = '[레인보우 브릿지] 임시 비밀번호 발급';
@@ -297,29 +373,39 @@ userMng.prototype.tempPassword = async (query) => {
                             \n임시 비밀번호 : ${randomCode}
                             \n
                             \n사이트로 돌아가서 임시 비밀번호로 로그인해주세요.`;
-        console.log('randomCode is %o:', randomCode);
+        logger.debug({
+            API: apiName,
+            randomCode: randomCode, 
+        });
 
         // 이메일 조회
-        console.log(`이메일 조회 쿼리문 날리기`);
-        mySQLQuery(queryGetUser(query)) // 쿼리문 실행
+        mySQLQuery(queryGetUser(query, apiName)) // 쿼리문 실행
             .then(async (res) => {
-                console.log('res length is:', res.length);
+                logger.debug({
+                    API: apiName,
+                    res_length: res.length, 
+                });
                 if (res.length == 0) {
                     // DB에 해당 이메일이 없음 -> 실패응답
-                    console.log('return 2009');
                     resolve(2009);
                 } else {
                     sendResult = await sendEmail(query, emailTitle, emailContent, randomCode); // 이메일 전송
-                    result = await queryChangePassword(query, randomCode); // 비밀번호 변경
+                    result = await queryChangePassword(query, randomCode, apiName); // 비밀번호 변경
                     
-                    console.log('이메일 전송 결과:', sendResult);
-                    console.log('result is %o:', result);
+                    logger.debug({
+                        API: apiName,
+                        '이메일 전송 결과': sendResult, 
+                        result: result, 
+                    });
 
                     resolve(result); // Promise가 성공 상태로 변경되며 결과를 반환
                 }
             })
             .catch((err) => {
-                console.log(`tempPassword() err: ${err} `);
+                logger.error({
+                    API: apiName,
+                    error: err
+                });
                 reject(9999);
             });
     });
@@ -329,8 +415,8 @@ userMng.prototype.tempPassword = async (query) => {
  * 1. 현재 비밀번호 일치한다면
  * 2. 바꿀 비밀번호를 저장한다.
 */
-userMng.prototype.changePassword = (query) => { // 현재 pw
-    queryChangePassword(query, null); // randomCode:null
+userMng.prototype.changePassword = (query, apiName) => { // 현재 pw
+    queryChangePassword(query, null, apiName); // randomCode:null
 }
 
 /** 이메일 인증
@@ -338,33 +424,36 @@ userMng.prototype.changePassword = (query) => { // 현재 pw
  * 2. 이메일 전송
  * 3. 인증번호 응답
  */
-userMng.prototype.sendEmail = async (query) => {
+userMng.prototype.sendEmail = async (query, apiName) => {
     const randomCode = await createRandomCode(6); // 6자리
     const emailTitle = '[레인보우 브릿지] 이메일 인증번호';
     const emailContent = `[레인보우 브릿지]에서 이메일 인증번호 안내드립니다.
                         \n인증번호 : ${randomCode}
                         \n
                         \n사이트로 돌아가서 이메일 인증번호를 입력해주세요.`;
-    console.log('randomCode is %o:', randomCode);
+    logger.debug({
+        API: apiName,
+        randomCode: randomCode, 
+    });
 
     // return new Promise(async (resolve, reject) => {
-    //     console.log('query :', query);
+    //     logger.debug('query :' + query);
 
     //     // 이메일 조회
-    //     console.log(`이메일 조회 쿼리문 날리기`)
+    //     logger.debug(`이메일 조회 쿼리문 날리기`)
     //     mySQLQuery(queryGetUser(query)) // 쿼리문 실행
     //         .then(async (res) => {
-    //             console.log('res length is:', res.length);
+    //             logger.debug('res length is:' + res.length);
     //             if (res.length == 0) { // DB에 해당 이메일이 없음 -> 회원가입 가능 -> 성공
-    //                 console.log('return 2000');
+    //                 logger.debug('return 2000');
     //                 resolve(2000);
     //             } else {
-    //                 console.log('return 1009');
+    //                 logger.debug('return 1009');
     //                 resolve(1009); // DB에 해당 이메일 있음 -> 회원가입 불가 -> 실패(중복)
     //             }
     //     })
     //     .catch((err) => {
-    //         console.log(`tempPassword() err: ${err} `)
+    //         logger.error(`tempPassword() err: ${err} `)
     //         reject(9999);
     //     });
     // });
@@ -373,44 +462,64 @@ userMng.prototype.sendEmail = async (query) => {
 };
 
 /** 일반회원 로그인 */
-userMng.prototype.loginUser = (query) => {
+userMng.prototype.loginUser = (query, apiName) => {
+    logger.debug({
+        API: apiName,
+        params: query, 
+    });
+
     // 비밀번호 복호화
     async function matchHashPassword(pw, pwfromDB) {
         const isMatch = await bcrypt.compare(pw, pwfromDB);
-        console.log(pw);
-        console.log(pwfromDB);
-        console.log(isMatch);
+        logger.debug({
+            API: apiName,
+            pw: pw, 
+            pwfromDB: pwfromDB, 
+            isMatch: isMatch, 
+        });
+
         return isMatch;
     }
 
     // 일반회원 로그인 쿼리문 날리기
     return new Promise((resolve, reject) => {
-        console.log(`일반회원 로그인 쿼리문 날리기`)
-        mySQLQuery(queryGetUser(query)) // 쿼리문 실행 
+        mySQLQuery(queryGetUser(query, apiName)) // 쿼리문 실행 
             .then(async (res) => { 
-                console.log(`일반회원 로그인 쿼리문 날리기222`)
-                console.log(`query.user_pw`, query.user_pw)
+                logger.debug({
+                    API: apiName,
+                    query_user_pw: query.user_pw, 
+                });
+
                 isMatch = await matchHashPassword(query.user_pw, res[res.length-1].user_pw); // 임시) 해당이멜로조회된 제일 최신 user를 리턴한다.
-                console.log('res[0].user_pw %o:', res[res.length-1].user_pw);
-                console.log(`isMatch: ${isMatch} `)
+                
+                logger.debug({
+                    API: apiName,
+                    'res[0].user_pw': res[res.length - 1].user_pw, 
+                    isMatch: isMatch,
+                });
                 if (isMatch == true) return resolve(selectUserInfo(res[res.length-1])); 
                 if (isMatch == false) return resolve(2009); 
             })
             .catch((err) => {
-                console.log(`loginUser() err: ${err} `);
+                logger.error({
+                    API: apiName,
+                    error: err
+                });
                 return resolve(9999);
             });
     });
 };
 
 /** 일반 회원가입 */
-userMng.prototype.addUser = (query) => {
+userMng.prototype.addUser = (query, apiName) => {
+    logger.debug({
+        API: apiName,
+        params: query, 
+    });
+
     // 회원가입 쿼리문 작성
     async function insertUser(query) {
-        console.log(`회원가입 쿼리문 작성`);
-        console.log('query %o:', query);
         user_pw = await toHashPassword(query.user_pw);
-        console.log('user_pw %o:', user_pw);
 
         // 만들 조건문 : sns회원인지 일반회원인지
         // 비번 해싱
@@ -425,13 +534,15 @@ userMng.prototype.addUser = (query) => {
 
     // 회원가입 쿼리문 날리기
     return new Promise(async (resolve, reject) => {
-        console.log(`회원가입 쿼리문 날리기`);
-        mySQLQuery(await insertUser(query)) // 쿼리문 실행 / await로 동기화
+        mySQLQuery(await insertUser(query, apiName)) // 쿼리문 실행 / await로 동기화
             .then((res) => {
                 return resolve(2000); // USER테이블에 회원가입 완료
             })
             .catch((err) => {
-                console.log(`insertUser() err: ${err} `);
+                logger.error({
+                    API: apiName,
+                    error: err
+                });
                 return resolve(9999);
             });
     });
@@ -443,10 +554,12 @@ userMng.prototype.addUser = (query) => {
 
 
 // 회원탈퇴 쿼리문 작성
-async function leaveUser(query) {
-    console.log(`일반회원/SNS 회원탈퇴 쿼리문 작성`)
-    console.log('query.user_email %o:', query.user_email);
-    
+async function leaveUser(query, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: query
+    });
+
     return {
         text: `DELETE FROM USER
                 WHERE user_email = ?`, 
@@ -455,7 +568,7 @@ async function leaveUser(query) {
 }
 
 // 카카오 토큰 갱신
-async function RenewalKakaoToken(refresh_token) {
+async function RenewalKakaoToken(refresh_token, apiName) {
     // 카카오 토큰을 받아온다
     const {
         data: {
@@ -472,11 +585,14 @@ async function RenewalKakaoToken(refresh_token) {
             client_secret: KAKAO_CLIENT_SECRET,
         },
     });
-    console.log('refresh_token %o:', refresh_token);
-    console.log('kakaoAccessToken %o:', kakaoAccessToken);
-    console.log('kakaoRefreshToken %o:', kakaoRefreshToken); // 리프레시 토큰은 1달 남았을 경우만 갱신됨
-    console.log('kakaoAccessTokenExpires %o:', kakaoAccessTokenExpires);
-    console.log('kakaoRefreshTokenExpires %o:', kakaoRefreshTokenExpires);
+    logger.debug({
+        API: apiName,
+        refresh_token: refresh_token,
+        kakaoAccessToken: kakaoAccessToken,
+        kakaoRefreshToken: kakaoRefreshToken,
+        kakaoAccessTokenExpires: kakaoAccessTokenExpires,  // 리프레시 토큰은 1달 남았을 경우만 갱신됨
+        kakaoRefreshTokenExpires: kakaoRefreshTokenExpires,
+    });
 
     // TODO
     // 만약 리프레시토큰이 undefined가 아니라 값을 응답받으면
@@ -486,7 +602,7 @@ async function RenewalKakaoToken(refresh_token) {
 }
 
 // 카카오 토큰발급, 유저정보조회
-async function joinKakao(query) {
+async function joinKakao(query, apiName) {
     // 카카오 토큰을 받아온다
     const {
         data: { access_token: kakaoAccessToken, refresh_token: kakaoRefreshToken },
@@ -499,9 +615,13 @@ async function joinKakao(query) {
             client_secret: KAKAO_CLIENT_SECRET,
         },
     });
-    console.log('query.code %o:', query.code);
-    console.log('kakaoAccessToken %o:', kakaoAccessToken);
-    console.log('kakaoRefreshToken %o:', kakaoRefreshToken);
+
+    logger.debug({
+        API: apiName,
+        query_code: query.code,
+        kakaoAccessToken: kakaoAccessToken,
+        kakaoRefreshToken: kakaoRefreshToken,
+    });
 
     // 카카오 유저 정보를 받아온다
     const { data: kakaoUser } = await axios('https://kapi.kakao.com/v2/user/me', {
@@ -509,60 +629,85 @@ async function joinKakao(query) {
             Authorization: `Bearer ${kakaoAccessToken}`,
         },
     });
-    console.log('kakaoUser %o:', kakaoUser);
-    console.log('kakaoUser nickname:', kakaoUser.properties.nickname);
-    console.log('kakaoUser profile_image:', kakaoUser.properties.profile_image);
-    console.log('kakaoUser email:', kakaoUser.kakao_account.email);
+    
+    logger.debug({
+        API: apiName,
+        kakaoUser: kakaoUser,
+        nickname: kakaoUser.properties.nickname,
+        profile_image: kakaoUser.properties.profile_image,
+        email: kakaoUser.properties.email,
+    });
 
     // 카카오 회원정보없으면 DB에 회원추가하기
     const result = await processLoginOrRegister(kakaoUser, kakaoRefreshToken);
-    console.log('이제 응답값 넘겨야함!');
-    console.log(`result processLoginOrRegister : ${result} `);
+    logger.debug(`result processLoginOrRegister : ${result} `);
+    logger.debug({
+        API: apiName,
+        result: result,
+        function: 'processLoginOrRegister()'
+    });
 
     // 응답값
     return new Promise((resolve, reject) => {
-        console.log(`일반회원 로그인 쿼리문 날리기`);
-        mySQLQuery(queryGetUser_sns(kakaoUser.kakao_account.email)) // 쿼리문 실행
+        mySQLQuery(queryGetUser_sns(kakaoUser.kakao_account.email, apiName)) // 쿼리문 실행
             .then(async (res) => {
-                console.log(`카카오 로그인 응답하기 / res.length`, res.length);
+                logger.debug({
+                    API: apiName,
+                    res_length: res.length
+                });
                 return resolve(selectUserInfo(res[res.length - 1]));
             })
             .catch((err) => {
-                console.log(`loginUser() err: ${err} `);
+                logger.error({
+                    API: apiName,
+                    error: err
+                });
                 return resolve(9999);
             });
     });
 }
 
 // 이메일 중복확인 후 DB에 회원정보없으면 회원가입하기
-async function processLoginOrRegister(kakaoUser, kakaoRefreshToken) {
+async function processLoginOrRegister(kakaoUser, kakaoRefreshToken, apiName) {
     try {
-        console.log('중복확인 쿼리문 날리기');
-        const res = await mySQLQuery(await queryGetUser_sns(kakaoUser.kakao_account.email));
-        console.log('res length is:', res.length);
+        const res = await mySQLQuery(await queryGetUser_sns(kakaoUser.kakao_account.email, apiName));
+        logger.debug({
+            API: apiName,
+            res_length: res.length
+        });
 
         if (res.length === 0) {
-            console.log('0명이라면 회원가입');
-            console.log('회원가입 쿼리문 날리기');
-            await mySQLQuery(await insertSnsUser(kakaoUser, 'K', kakaoRefreshToken));
-            console.log('insertSnsUser() 완료');
+            await mySQLQuery(await insertSnsUser(kakaoUser, 'K', kakaoRefreshToken, apiName));
+            logger.debug({
+                API: apiName,
+                if: '0명이라면 회원가입',
+                function: 'insertSnsUser()',
+            });
 
         } else { // 테스트 후 수정하기
-            console.log('1명이라도 있다면 로그인'); // 테스트 후 수정하기
-            console.log('SNS 로그인 쿼리문 날리기'); 
-            await mySQLQuery(await updateSnsRefreshToken(kakaoRefreshToken, kakaoUser.kakao_account.email));
+            await mySQLQuery(await updateSnsRefreshToken(kakaoRefreshToken, kakaoUser.kakao_account.email, apiName));
             // 로그아웃 이후 리프레시토큰이 없기 때문에 로그인(회원가입X)할 때 리프래시토큰 저장시켜주기
+            logger.debug({
+                API: apiName,
+                if: '1명이라도 있다면 로그인', // 테스트 후 수정하기
+                function: 'updateSnsRefreshToken()',
+            });
         }
 
     } catch (err) {
-        console.log(`오류: ${err}`);
+        logger.error({
+            API: apiName,
+            error: err
+        });
     }
 }
 
 // SNS 회원가입 쿼리문 작성
-async function insertSnsUser(kakaoUser, login_sns_type, refresh_token) {
-    console.log(`SNS 회원가입 쿼리문 작성`);
-
+async function insertSnsUser(kakaoUser, login_sns_type, refresh_token, apiName) {
+    logger.debug({
+        API: apiName+ '쿼리문 작성',
+        function: 'insertSnsUser()',
+    });
     return {
         text: `INSERT INTO USER 
                 (user_email, user_state, user_name, login_sns_type, user_prof_img, refresh_token, create_at) 
@@ -578,9 +723,11 @@ async function insertSnsUser(kakaoUser, login_sns_type, refresh_token) {
 }
 
 // SNS 리프레시토큰발급
-async function updateSnsRefreshToken(refresh_token, email) {
-    console.log(`SNS 리프레시토큰발급 쿼리문 작성`)
-
+async function updateSnsRefreshToken(refresh_token, email, apiName) {
+    logger.debug({
+        API: apiName+ '쿼리문 작성',
+        function: 'updateSnsRefreshToken()',
+    });
     return {
         text: `UPDATE USER
                 SET refresh_token = ?
@@ -592,8 +739,12 @@ async function updateSnsRefreshToken(refresh_token, email) {
 }
 
 // 로그인시 프론트에서 원하는 응답값
-function selectUserInfo(user) {
-    console.log('selectUserInfo () user %o:', user);
+function selectUserInfo(user, apiName) {
+    logger.debug({
+        API: apiName+' 응답값 모양 변형',
+        user: user,
+        function: 'selectUserInfo()',
+    });
     userInfo = { // 원하는 출력 모양을 추가함
         user_id: user.user_id,
         user_name: user.user_name,
@@ -601,14 +752,23 @@ function selectUserInfo(user) {
         login_sns_type: user.login_sns_type,
         user_email: user.user_email,
     }; 
-    console.log('selectUserInfo () userInfo %o:', userInfo);
+    logger.debug({
+        API: apiName+' 응답값 모양 변형 결과',
+        user: userInfo,
+        function: 'selectUserInfo()',
+    });
+
     return userInfo
 }
 
 // DB에서 refresh토큰값을 비워주는 쿼리문 작성
-function queryChangeRefreshTokenNull(email) {
-    console.log(`DB에서 refresh토큰값을 비워주는 쿼리문 작성`);
-    console.log('email %o:', email);
+function queryChangeRefreshTokenNull(email, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        email: email,
+        function: 'queryChangeRefreshTokenNull()',
+        detail: 'DB에서 refresh토큰값을 비워주는 쿼리문',
+    });
 
     return {
         text: `UPDATE USER
@@ -619,9 +779,12 @@ function queryChangeRefreshTokenNull(email) {
 }
 
 // SNS refresh토큰 조회 쿼리문 작성
-function queryGetRefreshToken(email) {
-    console.log(`SNS refresh토큰 조회 쿼리문 작성`);
-    console.log('email %o:', email);
+function queryGetRefreshToken(email, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        email: email,
+        function: 'queryGetRefreshToken()',
+    });
 
     return {
         text: `SELECT refresh_token
@@ -632,9 +795,12 @@ function queryGetRefreshToken(email) {
 }
 
 // 일반회원 로그인 쿼리문 작성
-function queryGetUser(query) {
-    console.log(`일반회원 로그인 쿼리문 작성`);
-    console.log('query %o:', query);
+function queryGetUser(query, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: query,
+        function: 'queryGetUser()',
+    });
 
     return {
         text: `SELECT *
@@ -645,9 +811,12 @@ function queryGetUser(query) {
 }
 
 // sns 간편로그인 쿼리문
-function queryGetUser_sns(email) {
-    console.log(`일반회원 로그인 쿼리문 작성`);
-    console.log('email %o:', email);
+function queryGetUser_sns(emai, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        email: email,
+        function: 'queryGetUser_sns()',
+    });
 
     return {
         text: `SELECT *
@@ -658,10 +827,12 @@ function queryGetUser_sns(email) {
 }
 
 // 회원정보조회(1):회원정보 쿼리문 작성
-function queryGetUser_noPW(query) {
-    console.log(`일반회원 로그인 쿼리문 작성`);
-    console.log('query %o:', query);
-
+function queryGetUser_noPW(query, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: query,
+        function: 'queryGetUser_noPW()',
+    });
     return {
         text: `SELECT user_id, user_email, user_state, user_name, user_prof_img, login_sns_type, create_at, update_at, leave_at
                 FROM USER
@@ -672,11 +843,7 @@ function queryGetUser_noPW(query) {
 
 // 마이페이지 유저사진 수정 쿼리문 작성
 // Params : user_email, user_prof_img
-function queryChangeUser_img(query, url) {
-    console.log('유저사진 수정 API 쿼리문 작성');
-    console.log('query %o:', query);
-    console.log('url %o:', url);
-
+function queryChangeUser_img(query, url, apiName) {
     return {
         text: `UPDATE USER
                 SET user_prof_img = ?
@@ -687,10 +854,7 @@ function queryChangeUser_img(query, url) {
 
 // 마이페이지 유저 정보 쿼리문 작성
 // Params : user_email, user_name, prof_img
-function queryChangeUser_info(query) {
-    console.log('유저정보 수정 API 쿼리문 작성');
-    console.log('query %o:', query);
-
+function queryChangeUser_info(query, apiName) {
     return {
         text: `UPDATE USER
         SET user_name = ?
@@ -699,10 +863,12 @@ function queryChangeUser_info(query) {
     };
 }
 
-function queryGetMyPageInfo(query) {
-    console.log('마이페이지 정보 가져오기 쿼리문 작성');
-    console.log('query 결과 %o :', query);
-
+function queryGetMyPageInfo(query, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: query,
+        function: 'queryGetMyPageInfo()',
+    });
     return {
         text: `SELECT user_id, user_email, user_state, user_name, user_prof_img, login_sns_type, create_at, update_at, leave_at
         FROM USER
@@ -712,20 +878,25 @@ function queryGetMyPageInfo(query) {
 }
 
 //
-function queryCreateRemember(query) {
-    console.log('추억공간 등록하기 작성');
-    console.log('query 결과 : %o', query);
-
+function queryCreateRemember(query, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: query,
+        function: 'queryCreateRemember()',
+    });
     return {
         text: 'CREATE FROM ',
     };
 }
 
 // 회원정보조회(2):반려견,추억공간 정보 쿼리문 작성
-function queryGetSpaceAndDog(query) {
-    console.log(`반려견,추억공간 정보 쿼리문 작성`)
-    console.log('query %o:', query);
-
+function queryGetSpaceAndDog(query, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: query,
+        function: 'queryGetSpaceAndDog()',
+        detail: '회원정보조회(2):반려견,추억공간 정보 쿼리문'
+    });
     return {
         text: `SELECT
                 MS.space_id,
@@ -742,35 +913,56 @@ function queryGetSpaceAndDog(query) {
 
 
 // 비밀번호 변경 쿼리문 날리기
-function queryChangePassword(query, randomCode) { // randomCode: 임시비밀번호일 경우 필요한 변수
+function queryChangePassword(query, randomCode, apiName) { // randomCode: 임시비밀번호일 경우 필요한 변수
     return new Promise(async (resolve, reject) => {
-        console.log(`비밀번호 변경 쿼리문 날리기`)
-        mySQLQuery(await changePassword(query, randomCode)) // 쿼리문 실행 
+        logger.debug({
+            API: apiName+'쿼리문 작성',
+            params: query
+        });
+
+        mySQLQuery(await changePassword(query, randomCode, apiName)) // 쿼리문 실행 
             .then(async (res) => { 
-                console.log(`res.changedRows : ${res.changedRows} `)
+                logger.debug({
+                    API: apiName,
+                    res_changedRows: res.changedRows,
+                });
+
                 if (res.changedRows >= 1) return resolve(2000); // TODO: 테스트이후 ==으로 변경하기
                 if (res.changedRows < 1) return resolve(1005);
             })
             .catch((err) => {
-                console.log(`changePassword() err: ${err} `);
+                logger.error({
+                    API: apiName,
+                    error: err
+                });
                 return resolve(9999);
             });
     });
 }
 
 // 일반회원 비밀번호 변경/임시 비밀번호 발급 쿼리문 작성
-async function changePassword(query, randomCode) {
-    console.log(`일반회원 비밀번호 변경 쿼리문 작성`)
-    console.log('query %o:', query);
+async function changePassword(query, randomCode, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: query,
+        randomCode: randomCode,
+        function: 'changePassword()',
+    });
+
     if (randomCode) { // 임시비밀번호
         user_pw = await toHashPassword(randomCode); // 랜덤값넣기
-        console.log('변경할 비번(랜덤코드)', randomCode);
+        
     } else { // 비밀번호 변경
         user_pw = await toHashPassword(query.user_pw);
-        console.log('변경할 비번(랜덤코드)', query.user_pw);
+        logger.debug('변경할 비번(랜덤코드)' + query.user_pw);
     }
 
-    console.log('user_pw is %o:', user_pw);
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        user_pw: user_pw,
+        detail: '변경할 비번(랜덤코드)',
+    });
+    
     return {
         text: `UPDATE USER 
                 SET user_pw = ?
@@ -780,10 +972,15 @@ async function changePassword(query, randomCode) {
 }
 
 // 이메일 전송
-function sendEmail(query, mailTile, mailContent, randomCode) {
+function sendEmail(query, mailTile, mailContent, randomCode, apiName) {
     return new Promise((resolve, reject) => {
-        console.log(`userMng.prototype.sendEmail() query.user_email : ${query.user_email}`);
-        console.log(`userMng.prototype.sendEmail() randomCode : ${randomCode}`);
+        logger.debug({
+            API: apiName,
+            params: query,
+            mailTile: mailTile,
+            mailContent: mailContent,
+            randomCode: randomCode,
+        });
 
         // nodemailer를 통한 이메일전송 설정
         var transporter = nodemailer.createTransport({
@@ -804,12 +1001,19 @@ function sendEmail(query, mailTile, mailContent, randomCode) {
         transporter.sendMail(mailOptions, function (error, info) {
             // 유저 이메일로 인증번호 보내기
             if (error) {
-                console.log(error);
+                logger.error({
+                    API: apiName,
+                    error: error
+                });
                 resolve(9999);
             } else {
                 // 전송 성공시 인증번호 응답하기
-                console.log('Email sent: ' + info.response);
-                console.log('randomCode: ' + randomCode);
+                logger.debug({
+                    API: apiName,
+                    'Email sent': info.response,
+                    randomCode: randomCode,
+                });
+
                 resolve(randomCode);
             }
         });
@@ -817,17 +1021,23 @@ function sendEmail(query, mailTile, mailContent, randomCode) {
 }
 
 // 인증번호 생성
-function createRandomCode(size) {
+function createRandomCode(size, apiName) {
     var randomCode = Math.random().toString(36).substr(2, size); // 난수
-    console.log(randomCode);
+    logger.debug({
+        API: apiName,
+        randomCode: randomCode,
+    });
     return randomCode;
 }
 
 // 비밀번호 암호화
-async function toHashPassword(pw) {
+async function toHashPassword(pw, apiName) {
     const hashedPassword = await bcrypt.hash(pw, 8);
-    console.log(pw);
-    console.log(hashedPassword);
+    logger.debug({
+        API: apiName,
+        pw: pw,
+        hashedPassword: hashedPassword,
+    });
     return hashedPassword;
 
     // const isMatch = await bcrypt.compare("helloworld1234", hashedPassword)
@@ -856,13 +1066,14 @@ function mySQLQuery(query) {
 //ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
 
 /** ACCESS TOKEN 유효성 검증 미들웨어 */
-userMng.prototype.authMiddleware = (req, res, next) => {
-    const apiName = 'ACCESS TOKEN 유효성 검증';
-    console.log('authMiddleware');
-
+userMng.prototype.authMiddleware = (req, res, next, apiName) => {
     // read the token from header or url
     const token = req.headers['access'];
-
+    
+    logger.debug({
+        API: apiName+' 미들웨어',
+        token: token,
+    });
     // token does not exist
     if (!token) {
         return resCode.returnResponseCode(res, 3002, apiName, null, null);

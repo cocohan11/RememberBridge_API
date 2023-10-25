@@ -17,14 +17,13 @@ app.use(cors()); // 전체허용
 // app.use(cors({ origin: '1.220.248.206', credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(morganMiddleware);
+app.use(morganMiddleware); // 요청로그찍힘
 
 
-logger.info("hello world this is index.js");
 
 // 포트설정
 app.listen(process.env.PORT, function () {
-    console.log(`Connect ${process.env.PORT} port`);
+    logger.info(`Connect ${process.env.PORT} port`);
 });
 
 // routes 폴더로 라우팅시키기
@@ -32,8 +31,7 @@ fs.readdirSync(__dirname + '/routes/').forEach(function (fileName) {
     let routeName = fileName.substr(0, fileName.lastIndexOf('.'));
     let fileFullPath = __dirname + '/routes/' + fileName;
 
-    console.log('fileFullPath :', fileFullPath);
-    console.log('/api/ + routeName:', '/api/' + routeName);
+    logger.info('fileFullPath :' + fileFullPath);
     if (fs.statSync(fileFullPath).isFile()) {
         app.use('/api/' + routeName, require(fileFullPath));
     }
@@ -41,7 +39,7 @@ fs.readdirSync(__dirname + '/routes/').forEach(function (fileName) {
 
 // html 파일 응답하기
 // url : http://43.202.80.70:3000/
-console.log('__dirname :', __dirname);
+logger.info('__dirname :', __dirname);
 app.use(express.static(path.join(__dirname, '../remember_front/build'))); // 이게 있어야 특정 폴더의 파일들 전송가능
 app.get('/', function (요청, 응답) {
     응답.sendFile(path.join(__dirname, '../remember_front/build/index.html'));

@@ -1,3 +1,4 @@
+const logger = require("../winston/logger");
 function resCode() {}
 /**
  * 에러코드로 응답을 받기 
@@ -8,7 +9,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
       
       case 2000:
         message = apiName + ' 성공' // ex) 3D 모델 재성성 성공
-        console.log(`returnResponseCode 2000`);
+        logger.debug(`returnResponseCode 2000`);
         const result_success = {
           code: '2000',
           message: message
@@ -25,8 +26,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
           });
           break;
         }
-
-        console.log(`최종응답값 : \n${JSON.stringify(result_success, null, 2)}`);
+        logger.http(`${JSON.stringify(result_success, null, 2)}`);
         res.status(200).json({
           result: result_success
         });
@@ -42,7 +42,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
           code: '2009',
           message: message
         };
-        console.log(`최종응답값 : \n${JSON.stringify(result_fail, null, 2)}`);
+        logger.http(`최종응답값 : \n${JSON.stringify(result_fail, null, 2)}`);
         res.status(200).json({
           result: result_fail
         })
@@ -58,7 +58,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
           code: '1009',
           message: message
         };
-        console.log(`최종응답값 : \n${JSON.stringify(result_duplication, null, 2)}`);
+        logger.http(`최종응답값 : \n${JSON.stringify(result_duplication, null, 2)}`);
         res.status(200).json({
           result: result_duplication
         })
@@ -74,7 +74,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
           code: '1002',
           message: message
         };
-        console.log(`최종응답값 : \n${JSON.stringify(result_empty, null, 2)}`);
+        logger.http(`최종응답값 : \n${JSON.stringify(result_empty, null, 2)}`);
         res.status(401).json({
           result: result_empty
         })
@@ -90,7 +90,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
           code: '1005',
           message: message
         };
-        console.log(`최종응답값 : \n${JSON.stringify(result_notExist, null, 2)}`);
+        logger.http(`최종응답값 : \n${JSON.stringify(result_notExist, null, 2)}`);
         res.status(200).json({
           result: result_notExist
         })
@@ -106,7 +106,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
           code: '3002',
           message: message
         };
-        console.log(`최종응답값 : \n${JSON.stringify(result_token_empty, null, 2)}`);
+        logger.http(`최종응답값 : \n${JSON.stringify(result_token_empty, null, 2)}`);
         res.status(403).json({ // http 상태값 403 : 권한거부
           result: result_token_empty
         })
@@ -122,7 +122,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
           code: '3009',
           message: message
         };
-        console.log(`최종응답값 : \n${JSON.stringify(result_token_error, null, 2)}`);
+        logger.http(`최종응답값 : \n${JSON.stringify(result_token_error, null, 2)}`);
         res.status(403).json({ // http 상태값 403 : 권한거부
           result: result_token_error
         })
@@ -138,7 +138,7 @@ resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessag
           code: '9999',
           message: message
         };
-        console.log(`최종응답값 : \n${JSON.stringify(result_failOrError, null, 2)}`);
+        logger.http(`최종응답값 : \n${JSON.stringify(result_failOrError, null, 2)}`);
         res.status(500).json({
           result: result_failOrError
         }) 

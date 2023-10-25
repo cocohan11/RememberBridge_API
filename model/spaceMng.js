@@ -2,6 +2,7 @@
 
 const dbPool = require('../util/dbPool');
 const connection = dbPool.init();
+const logger = require("../winston/logger");
 require("dotenv").config(); // 환경변수 모듈
 const {
     AWS_S3_ACCESS_ID, AWS_S3_ACCESS_KEY, AWS_S3_REGION// 환경변수'
@@ -25,13 +26,13 @@ spaceMng.prototype.removeDiaryComment = async (query) => {
 
     // 1. 존재유무 확인
     let comment_info = await mySQLQuery(await selectTheDiaryComment(query.comment_id)) // 해당댓글 조회 
-    console.log('comment_info %o:', comment_info); 
+    logger.debug('comment_info %o:' + comment_info); 
     if (comment_info.length == 0) return 1005;
 
 
     // 2. 삭제하기
     let res_delete = await mySQLQuery(await removeTheDiaryComment(query.comment_id))
-    console.log('res_delete %o:', res_delete);
+    logger.debug('res_delete %o:' + res_delete);
     if (res_delete.affectedRows != 1) return 9999; // 삭제실패시 9999 응답
     else return 2000;
 
@@ -47,7 +48,7 @@ spaceMng.prototype.changeComment = async (query) => {
     
     // 1. 댓글 수정쿼리 날리기
     let res = await mySQLQuery(await changeComment(query))
-    console.log('res %o:', res);
+    logger.debug('res %o:' + res);
     
 
     // 2. 수정한 댓글 정보 응답
@@ -55,7 +56,7 @@ spaceMng.prototype.changeComment = async (query) => {
         
         // 댓글 전체
         let comment_info = await mySQLQuery(await selectTheDiaryComment(query.comment_id)) // 해당댓글 조회 
-        console.log('comment_info %o:', comment_info); 
+        logger.debug('comment_info %o:' + comment_info); 
         if (comment_info.length == 0) return 1005;
 
         // 최종응답값에 들어갈 데이터
@@ -73,7 +74,7 @@ spaceMng.prototype.getDiaryComments = async (query) => {
     
     // 2. 댓글 전체
     let comment_info = await mySQLQuery(await selectDiaryComment(query.diary_id, 1000)) // 최신댓글 1000개 조회 
-    console.log('comment_info %o:', comment_info); 
+    logger.debug('comment_info %o:' + comment_info); 
     if (comment_info.length == 0) return 1005;
 
 
@@ -95,18 +96,18 @@ spaceMng.prototype.addComment = async (query) => {
     // 1.댓글 작성
     let comment_id = await mySQLQuery(await addComment(query))
     comment_id = comment_id.insertId; // comment_id만 추출
-    console.log('comment_id %o:', comment_id);
+    logger.debug('comment_id %o:' + comment_id);
     if (!comment_id) return 9999; // 저장안됐으면 9999응답
 
 
     // 2. 댓글 내용
     let diary_comment = await mySQLQuery(await selectDiaryComment(query.diary_id, 1)) // 최신댓글 1개 조회 
-    console.log('diary_comment %o:', diary_comment); 
+    logger.debug('diary_comment %o:' + diary_comment); 
 
     
     // 3. 댓글 갯수
     let comment_count = await mySQLQuery(await selectDiaryCommentCount(query.diary_id))
-    console.log('comment_count %o:', comment_count); 
+    logger.debug('comment_count %o:' + comment_count); 
 
     // 댓글이 없는경우 : null 응답
     if (diary_comment[0] == undefined || comment_count[0] == undefined) {
@@ -119,7 +120,7 @@ spaceMng.prototype.addComment = async (query) => {
             count:comment_count[0].count
         }
     }
-    console.log('comment_info %o:', comment_info); 
+    logger.debug('comment_info %o:' + comment_info); 
 
 
     // 최종응답값에 들어갈 데이터
@@ -142,17 +143,17 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => {
     
     // 1. like
     let like = await mySQLQuery(await selectDiaryLike(diaryId, userId))
-    console.log('like %o:', like);
+    logger.debug('like %o:' + like);
     if (like.length == 0) like = false;
 
     // 2. emotion, diary_content
     let emotionAndContent = await mySQLQuery(await selectDiaryEmotionAndContent(diaryId))
-    console.log('emotionAndContent %o:', emotionAndContent);
+    logger.debug('emotionAndContent %o:' + emotionAndContent);
     if (emotionAndContent.length == 0) return 1005;
 
     // 3. writer
     let writer = await mySQLQuery(await selectDiaryWriter(userId))
-    console.log('writer %o:', writer); 
+    logger.debug('writer %o:' + writer); 
     if (writer.length == 0) return 1005;
 
     // diary_info 안에 3개값 담기
@@ -162,17 +163,17 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => {
         diary_content:emotionAndContent[0].diary_content,
         writer:writer[0].writer
     }
-    console.log('diary_info %o:', diary_info);
+    logger.debug('diary_info %o:' + diary_info);
 
 
 
     // 4. comment_id, user_name, comment_text
     let diary_comment = await mySQLQuery(await selectDiaryComment(diaryId, 1)) // 최신댓글 1개만 조회
-    console.log('diary_comment %o:', diary_comment);
+    logger.debug('diary_comment %o:' + diary_comment);
 
     // 5.count
     let count = await mySQLQuery(await selectDiaryCommentCount(query.diary_id))
-    console.log('count %o:', count); 
+    logger.debug('count %o:' + count); 
 
     // 댓글이 없는경우 : null 응답
     if (diary_comment[0] == undefined || count[0] == undefined) {
@@ -185,13 +186,13 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId) => {
             count:count[0].count
         }
     }
-    console.log('comment_info %o:', comment_info); 
+    logger.debug('comment_info %o:' + comment_info); 
 
 
 
     // 6. photo_id, photo_url
     let diary_photos = await mySQLQuery(await selectPhotoByOneDiary(diaryId))
-    console.log('diary_photos %o:', diary_photos);
+    logger.debug('diary_photos %o:' + diary_photos);
     if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
 
     // 최종 응답값에 필요한 데이터들
@@ -213,20 +214,20 @@ spaceMng.prototype.setLike = async (diaryId, userId) => { // body(반려견 정�
     
     // 1. DB에서 좋아요 조회
     let res = await mySQLQuery(await selectDiaryLike(diaryId, userId))
-    console.log('res %o:', res);
+    logger.debug('res %o:' + res);
 
 
     // 2. 조회된 값이 1개면 delete문
     if (res.length == 1) {  
         let res = await mySQLQuery(await removeDiaryLike(diaryId, userId))
-        console.log('res %o:', res);
+        logger.debug('res %o:' + res);
         return false; // 좋아요(X) 리턴
 
 
     // 3. 조회된 값이 0개면 insert문
     } else {  
         let res = await mySQLQuery(await addDiaryLike(diaryId, userId))
-        console.log('res %o:', res);
+        logger.debug('res %o:' + res);
         return true; // 좋아요(O) 리턴
     }
 }
@@ -236,12 +237,12 @@ spaceMng.prototype.setLike = async (diaryId, userId) => { // body(반려견 정�
    - DOG 테이블에 반려견 배경사진 수정
 */
 spaceMng.prototype.changeBackgroundImg = async (query, file_location) => { // body(반려견 정보)
-    console.log('query %o:', query);
-    console.log('file_location %o:', file_location);
+    logger.debug('query %o:' + query);
+    logger.debug('file_location %o:' + file_location);
     
     // DOG 테이블에 배경사진 수정
     let res = await mySQLQuery(await changeBackgroundImg(query, file_location))
-    console.log('res %o:', res);
+    logger.debug('res %o:' + res);
 
     if (res.changedRows == 1) {  // 변경된값이 1개면 성공
         return 2000
@@ -255,17 +256,17 @@ spaceMng.prototype.changeBackgroundImg = async (query, file_location) => { // bo
 /** 타임라인 반려견 프사 수정 */
 spaceMng.prototype.setDogImg = async (query, url) => {
     try {
-        console.log('query %o', query);
-        console.log('url %o', url);
+        logger.debug('query %o' + query);
+        logger.debug('url %o' + url);
         // 유저정보 수정 쿼리문 날리기
         const res = await mySQLQuery(changeDog_img(query, url));
-        console.log('반려견 프사 수정 결과 : ', res);
+        logger.debug('반려견 프사 수정 결과 : ' + res);
 
         if (res.changedRows == 1) return 2000;
         else return 1005;
         
     } catch (error) {
-        console.log('에러', error);
+        logger.debug('에러' + error);
         return 9999;
     }
 };
@@ -282,29 +283,29 @@ spaceMng.prototype.getTimeline = async (query) => {
     
     // 1. DB) DOG 테이블에서 dog_info 리턴
     let dog_info = await mySQLQuery(await selectDogInfo(query))
-    console.log('dog_info %o:', dog_info);
+    logger.debug('dog_info %o:' + dog_info);
     if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
 
     // 2. DB) USER 테이블에서 user_info 리턴
     let user_info = await mySQLQuery(await selectUserInfo(query))
-    console.log('user_info %o:', user_info);
+    logger.debug('user_info %o:' + user_info);
     if (!user_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
 
     // 페이징에 필요한 날짜 추출 (2023-09-01 ~ 2023-09-30)
     let dates = formattedDate(query.year, query.month);
-    console.log('dates %o:', dates);
+    logger.debug('dates %o:' + dates);
 
 
     // 3. DB) 일기 데이터 얻기
     let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate))
-    console.log('diary %o:', diary_info);
+    logger.debug('diary %o:' + diary_info);
 
 
     // 일기를 "diary_id"를 기준으로 그룹화할 객체
     const groupedDiaries = {};
-    console.log('groupedDiaries 비어있음 %o:', groupedDiaries);
+    logger.debug('groupedDiaries 비어있음 %o:' + groupedDiaries);
     diary_info.forEach((result) => {
         const { diary_id, diary_content, photo_url, select_date } = result;
         if (!groupedDiaries[select_date]) {  // select_date 키로 된 객체가 없다면
@@ -315,7 +316,7 @@ spaceMng.prototype.getTimeline = async (query) => {
         }
         groupedDiaries[select_date][diary_id].push({ diary_content, photo_url });
     });
-    console.log(JSON.stringify(groupedDiaries, null, 2)); // JSON 형태로 출력
+    logger.debug(JSON.stringify(groupedDiaries, null, 2)); // JSON 형태로 출력
 
 
     return {
@@ -338,7 +339,7 @@ spaceMng.prototype.changeDiary = async (query, files, fileInfo) => { // body(일
     
     // 일기정보 수정 (공통)
     let res = await mySQLQuery(await changeDiary(query))
-    console.log('res %o:', res);
+    logger.debug('res %o:' + res);
     
     // 1. 사진 수정이 없다면 - 최종응답하기
     if (!files) {
@@ -349,8 +350,8 @@ spaceMng.prototype.changeDiary = async (query, files, fileInfo) => { // body(일
     // ------------------------- 수정 있다면 -------------------------
     // 2-1. 존재유무 확인 - db)url
     let diary_photos = await mySQLQuery(await selectPhotoForS3(query.diary_id))
-    console.log('diary_photos %o:', diary_photos);
-    console.log('diary_photos.length %o:', diary_photos.length);
+    logger.debug('diary_photos %o:' + diary_photos);
+    logger.debug('diary_photos.length %o:' + diary_photos.length);
     if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
     
     // 2-2) 존재유무 확인 - S3사진파일
@@ -358,23 +359,23 @@ spaceMng.prototype.changeDiary = async (query, files, fileInfo) => { // body(일
     let bucketPathList_exist = [];
     for (let i = 0; i < diary_photos.length; i++) { // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
         bucketPathList.push({ Bucket: diary_photos[i].bucket, Key: diary_photos[i].s3key })
-        console.log('i :', i);
-        console.log('bucketPathList :', bucketPathList);
+        logger.debug('i :' + i);
+        logger.debug('bucketPathList :' + bucketPathList);
     }
 
     // S3에 사진존재하는지 확인하기
     const result = await checkfileExists(bucketPathList, bucketPathList_exist);
-    console.log('result :', result);
+    logger.debug('result :' + result);
     if (result == 1005) return 1005;
 
     // 3-1) 삭제하기 - 사진URL
     let res_delete_url = await mySQLQuery(await removeDiaryPhotoUrls(query.diary_id))
-    console.log('res_delete_url %o:', res_delete_url); 
+    logger.debug('res_delete_url %o:' + res_delete_url); 
     if (res_delete_url.affectedRows == 0) return 9999; // 삭제실패시 9999 응답
 
     // 3-2) 삭제하기 - S3사진파일
     const res_delete_s3 = await removeDiaryPhotosFromS3(bucketPathList);
-    console.log('res_delete_s3 %o:', res_delete_s3); 
+    logger.debug('res_delete_s3 %o:' + res_delete_s3); 
     // return res_delete_s3; // 2000 또는 9999
 
     // ------------------ 5. DB에 url 저장하기 (여기위치하기 - 삭제후 저장) -------------------
@@ -384,8 +385,8 @@ spaceMng.prototype.changeDiary = async (query, files, fileInfo) => { // body(일
         const key = fileInfo.key[i];
         
         let photo_id = await mySQLQuery(await addDiaryPhoto(query.diary_id, location, bucket, key));
-        console.log('DB에 url 저장하기 fileInfo.locations.length %o:', fileInfo.locations.length);
-        console.log('DB에 url 저장하기 photo_id %o:', photo_id);
+        logger.debug('DB에 url 저장하기 fileInfo.locations.length %o:' + fileInfo.locations.length);
+        logger.debug('DB에 url 저장하기 photo_id %o:' + photo_id);
         if (!photo_id) return 9999; // 저장안됐으면 9999응답
     }
     return 2000;
@@ -401,13 +402,13 @@ spaceMng.prototype.removeDiary = async (query) => {
 
     // 1-1) 존재유무 확인 - 일기데이터
     let diary_info = await mySQLQuery(await selectDiary(query))
-    console.log('diary_info %o:', diary_info);
+    logger.debug('diary_info %o:' + diary_info);
     if (!diary_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
     // 1-2) 존재유무 확인 - 사진URL
     let diary_photos = await mySQLQuery(await selectPhotoForS3(query.diary_id))
-    console.log('diary_photos %o:', diary_photos);
-    console.log('diary_photos.length %o:', diary_photos.length);
+    logger.debug('diary_photos %o:' + diary_photos);
+    logger.debug('diary_photos.length %o:' + diary_photos.length);
     if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
 
     // 1-3) 존재유무 확인 - S3사진파일
@@ -415,29 +416,29 @@ spaceMng.prototype.removeDiary = async (query) => {
     let bucketPathList_exist = [];
     for (let i = 0; i < diary_photos.length; i++) { // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
         bucketPathList.push({ Bucket: diary_photos[i].bucket, Key: diary_photos[i].s3key })
-        console.log('i :', i);
-        console.log('bucketPathList :', bucketPathList);
+        logger.debug('i :' + i);
+        logger.debug('bucketPathList :' + bucketPathList);
     }
 
     // S3에 사진존재하는지 확인하기
     const result = await checkfileExists(bucketPathList, bucketPathList_exist);
-    console.log('result :', result);
+    logger.debug('result :' + result);
     if (result == 1005) return 1005;
 
     //---------------------------------------------------------
     // 2-1) 삭제하기 - 일기데이터
     let res_delete = await mySQLQuery(await removeDiary(query.diary_id))
-    console.log('res_delete %o:', res_delete);
+    logger.debug('res_delete %o:' + res_delete);
     if (res_delete.affectedRows != 1) return 9999; // 삭제실패시 9999 응답
 
     // 2-2) 삭제하기 - 사진URL
     let res_delete_url = await mySQLQuery(await removeDiaryPhotoUrls(query.diary_id))
-    console.log('res_delete_url %o:', res_delete_url); 
+    logger.debug('res_delete_url %o:' + res_delete_url); 
     if (res_delete_url.affectedRows == 0) return 9999; // 삭제실패시 9999 응답
 
     // 2-3) 삭제하기 - S3사진파일
     const res_delete_s3 = await removeDiaryPhotosFromS3(bucketPathList);
-    console.log('res_delete_s3 %o:', res_delete_s3); 
+    logger.debug('res_delete_s3 %o:' + res_delete_s3); 
     return res_delete_s3; // 2000 또는 9999
 
 }
@@ -451,13 +452,13 @@ spaceMng.prototype.getDiary = async (query) => {
     
     // 1. DB) DIARY 테이블에서 diary_info 리턴
     let diary_info = await mySQLQuery(await selectDiary(query))
-    console.log('diary_info %o:', diary_info);
+    logger.debug('diary_info %o:' + diary_info);
     if (!diary_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
 
     // 2. DB) DIARY_PHOTO 테이블에서 URL배열 리턴
     let diary_photos = await mySQLQuery(await selectPhotoByOneDiary(query.diary_id))
-    console.log('diary_photos %o:', diary_photos);
+    logger.debug('diary_photos %o:' + diary_photos);
     if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
 
     // API성공 시) 원하는 출력 모양을 추가함
@@ -479,14 +480,14 @@ spaceMng.prototype.addDiary = async (query, fileInfo) => {
     
     // 1. 추억공간 조회
     const find_space = await mySQLQuery(await selectSpace(query.space_id))
-    console.log('find_space.length 1이어야함 %o:', find_space.length);
+    logger.debug('find_space.length 1이어야함 %o:' + find_space.length);
     if (find_space.length != 1) return 1005; // 추억공간이 조회안된다면 다음 로직안넘어가고 1005 응답으로 끝냄
 
 
     // 2. DB) 파라미터들 DIARY 테이블에 저장
     let diary_id = await mySQLQuery(await addDiary(query))
     diary_id = diary_id.insertId; // diary_id만 추출
-    console.log('diary_id %o:', diary_id);
+    logger.debug('diary_id %o:' + diary_id);
     if (!diary_id) return 9999; // 저장안됐으면 9999응답
 
 
@@ -497,7 +498,7 @@ spaceMng.prototype.addDiary = async (query, fileInfo) => {
         const key = fileInfo.key[i];
         
         let photo_id = await mySQLQuery(await addDiaryPhoto(diary_id, location, bucket, key));
-        console.log('photo_id %o:', photo_id);
+        logger.debug('photo_id %o:' + photo_id);
         if (!photo_id) return 9999; // 저장안됐으면 9999응답
     }
 
@@ -517,13 +518,13 @@ spaceMng.prototype.removeSpace = async (query) => {
     
     // 1. 추억공간 조회
     const find_space = await mySQLQuery(await selectSpace(query.space_id))
-    console.log('find_space.length 1이어야함 %o:', find_space.length);
-    console.log('find_space.dog_id %o:', find_space[0].dog_id);
+    logger.debug('find_space.length 1이어야함 %o:' + find_space.length);
+    logger.debug('find_space.dog_id %o:' + find_space[0].dog_id);
     const dog_id = find_space[0].dog_id;
 
     // 2. DOG 조회
     let find_dog = await mySQLQuery(await selectDog(dog_id))
-    console.log('find_dog.length 1이어야함 %o:', find_dog.length);
+    logger.debug('find_dog.length 1이어야함 %o:' + find_dog.length);
        
     // 둘 다 조회되어야 삭제하기
     if (find_space.length == 1 && find_dog.length == 1) {
@@ -531,11 +532,11 @@ spaceMng.prototype.removeSpace = async (query) => {
 
         // 3. 추억공간 삭제
         let res_space = await mySQLQuery(await removeSpace(query.space_id))
-        console.log('res_space.affectedRows 1이어야함 %o:', res_space.affectedRows);
+        logger.debug('res_space.affectedRows 1이어야함 %o:' + res_space.affectedRows);
         
         // 4. DOG 삭제
         let res_dog = await mySQLQuery(await removeDog(dog_id))
-        console.log('res_dog.affectedRows 1이어야함 %o:', res_dog.affectedRows);
+        logger.debug('res_dog.affectedRows 1이어야함 %o:' + res_dog.affectedRows);
 
         // 둘 다 삭제되어야 2000응답
         if (res_space.affectedRows == 1 && res_dog.affectedRows == 1) {
@@ -557,8 +558,8 @@ spaceMng.prototype.getDogInfo = async (dog_id) => {
     
     // DOG 테이블 반려견 정보 조회
     let res = await mySQLQuery(await selectDog(dog_id))
-    console.log('res %o:', res);
-    console.log('res.length %o:', res.length);
+    logger.debug('res %o:' + res);
+    logger.debug('res.length %o:' + res.length);
 
     if (res.length == 1) { // 조회된 강아지가 1마리인 경우
         return res
@@ -576,7 +577,7 @@ spaceMng.prototype.changeDog = async (query, file_location) => { // body(반려�
     
     // DOG 테이블에 반려견 정보 수정
     let res = await mySQLQuery(await changeDog(query, file_location))
-    console.log('res %o:', res);
+    logger.debug('res %o:' + res);
 
     if (res.changedRows > 0) {  // 변경된값이 1개 이상임
         return 2000
@@ -598,12 +599,12 @@ spaceMng.prototype.addSpace = async (query, file_location) => {
     let user_id = await mySQLQuery(await getUserId(query.user_email)) // email -> user_id
     if (!user_id[0]) return 1005; // 없는 이메일 예외처리
     user_id = user_id[0].user_id; // user_id만 추출
-    console.log('user_id %o:', user_id);
+    logger.debug('user_id %o:' + user_id);
 
     // 2. DOG 테이블에 반려견 정보 저장
     let dog_id = await mySQLQuery(await addDog(user_id, query, file_location))
     dog_id = dog_id.insertId; // dog_id만 추출
-    console.log('dog_id %o:', dog_id);
+    logger.debug('dog_id %o:' + dog_id);
 
     // 3. MEMORY_SPACE 테이블에 user_id, dog_id값 저장
     let space_id = await mySQLQuery(await addSpace(user_id, dog_id)) // + bkg_img_url 파라미터 추가하기
@@ -628,8 +629,8 @@ function formattedDate(year, month) { // 2023, 10
     // 'YYYY-MM-DD' 형식의 날짜 생성
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    console.log('startDate %o', startDate); // 출력: '2023-09-30'
-    console.log('endDate %o', endDate); // 출력: '2023-09-30'
+    logger.debug('startDate %o' + startDate); // 출력: '2023-09-30'
+    logger.debug('endDate %o' + endDate); // 출력: '2023-09-30'
     
     return {
         startDate,
@@ -654,7 +655,7 @@ function pramsForDeleteObjects(bucketPathList_exist, idx) {
 
 // S3 파일삭제 함수
 async function removeDiaryPhotosFromS3(bucketPathList) {
-    console.log(`deleteFiles() 삭제할 파일 갯수: ${bucketPathList.length}`);
+    logger.debug(`deleteFiles() 삭제할 파일 갯수: ${bucketPathList.length}`);
   
     try {
       const deletePromises = bucketPathList.map((value, index) => {
@@ -662,18 +663,18 @@ async function removeDiaryPhotosFromS3(bucketPathList) {
       });
   
       await Promise.all(deletePromises); // 모든 삭제 작업을 병렬로 처리
-      console.log(`File deleted successfully.`); // 조회O 삭제O
+      logger.debug(`File deleted successfully.`); // 조회O 삭제O
       return 2000;
     } catch (err) {
-      console.log(`deleteFiles() err: \n${JSON.stringify(err.stack, null, 2)}`);
+      logger.debug(`deleteFiles() err: \n${JSON.stringify(err.stack, null, 2)}`);
       return 9999; 
     }
 }
 
 // S3 파일존재유무 조회
 async function checkfileExists(bucketPathList, bucketPathList_exist) {
-    console.log('파일명으로 S3에 사진있는지 조회하기 checkExists()');
-    console.log('bucketPathList', bucketPathList);
+    logger.debug('파일명으로 S3에 사진있는지 조회하기 checkExists()');
+    logger.debug('bucketPathList' + bucketPathList);
     const promises = [];
   
     for (const value of bucketPathList) {
@@ -682,12 +683,12 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
           new Promise(async (resolve, reject) => {
             try {
               const exists_data = await s3.headObject(value).promise();
-              console.log(`File ${value.Key} exists. checking...and list push`);
+              logger.debug(`File ${value.Key} exists. checking...and list push`);
               bucketPathList_exist.push(value);
-              console.log('bucketPathList_exist', bucketPathList_exist);
+              logger.debug('bucketPathList_exist' + bucketPathList_exist);
               resolve(exists_data);
             } catch (err) {
-              console.log(`File ${value.Key} does not exist.`);
+              logger.debug(`File ${value.Key} does not exist.`);
               reject(1005);
             }
           })
@@ -696,22 +697,22 @@ async function checkfileExists(bucketPathList, bucketPathList_exist) {
     }
   
     try {
-      console.log(`promises 안에 담겨져서 존재하는지 조회할 파일 갯수: ${promises.length}`);
+      logger.debug(`promises 안에 담겨져서 존재하는지 조회할 파일 갯수: ${promises.length}`);
       const res = await Promise.all(promises);
-      console.log('res', res);
-      console.log('All files exist. Deleting...');
+      logger.debug('res' + res);
+      logger.debug('All files exist. Deleting...');
       return 2000;
     } catch (err) {
-      console.log('File does not exist. Cannot delete.');
+      logger.debug('File does not exist. Cannot delete.');
       return 1005;
     }
 }
 //------------------------- 쿼리 -------------------------
 // 반려견 프사 수정 쿼리문 작성
 function changeDog_img(query, url) {
-    console.log('반려견 프사 수정 API 쿼리문 작성');
-    console.log('query %o:', query);
-    console.log('url %o:', url);
+    logger.debug('반려견 프사 수정 API 쿼리문 작성');
+    logger.debug('query %o:' + query);
+    logger.debug('url %o:' + url);
 
     return {
         text: `UPDATE DOG
@@ -723,8 +724,8 @@ function changeDog_img(query, url) {
 
 // 일기 삭제 쿼리문 작성
 async function removeTheDiaryComment(comment_id) {
-    console.log(`일기 삭제 쿼리문 작성`)
-    console.log('diary_id %o:', comment_id);
+    logger.debug(`일기 삭제 쿼리문 작성`)
+    logger.debug('diary_id %o:' + comment_id);
 
     return { 
         text: `DELETE FROM COMMENT
@@ -735,8 +736,8 @@ async function removeTheDiaryComment(comment_id) {
 
 // 일기 댓글 수정 쿼리문 작성
 async function changeComment(query) {
-    console.log(`일기 댓글 수정 쿼리문 작성`)
-    console.log('query %o:', query);
+    logger.debug(`일기 댓글 수정 쿼리문 작성`)
+    logger.debug('query %o:' + query);
 
     return {  
         text: `UPDATE COMMENT 
@@ -749,8 +750,8 @@ async function changeComment(query) {
 
 // 일기 댓글 작성 쿼리문 작성
 async function addComment(query) {
-    console.log(`일기 댓글 작성 쿼리문 작성`)
-    console.log('query %o:', query);
+    logger.debug(`일기 댓글 작성 쿼리문 작성`)
+    logger.debug('query %o:' + query);
     
     return { // 컬럼 4개
         text: `INSERT INTO COMMENT 
@@ -762,7 +763,7 @@ async function addComment(query) {
 
 // 일기 댓글 갯수조회 쿼리문 작성
 async function selectDiaryCommentCount(diary_id) {
-    console.log(`일기 댓글 갯수조회 쿼리문 작성`)
+    logger.debug(`일기 댓글 갯수조회 쿼리문 작성`)
 
     return { 
         text: `SELECT COUNT(*) AS count
@@ -775,7 +776,7 @@ async function selectDiaryCommentCount(diary_id) {
 
 // 일기 해당 댓글 조회 쿼리문 작성 
 async function selectTheDiaryComment(comment_id) {
-    console.log(`일기 해당 댓글 조회 쿼리문 작성`)
+    logger.debug(`일기 해당 댓글 조회 쿼리문 작성`)
 
     return { 
         text: `SELECT COMMENT.comment_id, USER.user_name, COMMENT.comment_text
@@ -789,7 +790,7 @@ async function selectTheDiaryComment(comment_id) {
 
 // 일기 댓글 조회 쿼리문 작성 
 async function selectDiaryComment(diaryId, limit) {
-    console.log(`일기 댓글 조회 쿼리문 작성`)
+    logger.debug(`일기 댓글 조회 쿼리문 작성`)
 
     return { 
         text: `SELECT COMMENT.comment_id, USER.user_name, COMMENT.comment_text
@@ -807,7 +808,7 @@ async function selectDiaryComment(diaryId, limit) {
 
 // 일기 작성자 조회 쿼리문 작성 
 async function selectDiaryWriter(userId) {
-    console.log(`일기 작성자 조회 쿼리문 작성`)
+    logger.debug(`일기 작성자 조회 쿼리문 작성`)
 
     return { 
         text: `SELECT user_name as writer 
@@ -820,7 +821,7 @@ async function selectDiaryWriter(userId) {
 
 // 일기 감정,내용 조회 쿼리문 작성 
 async function selectDiaryEmotionAndContent(diaryId) {
-    console.log(`일기 감정,내용 조회 쿼리문 작성`)
+    logger.debug(`일기 감정,내용 조회 쿼리문 작성`)
 
     return { 
         text: `SELECT emotion, diary_content 
@@ -833,7 +834,7 @@ async function selectDiaryEmotionAndContent(diaryId) {
 
 // 일기 좋아요 해제 쿼리문 작성 
 async function removeDiaryLike(diaryId, userId) {
-    console.log(`일기 좋아요 해제 쿼리문 작성`)
+    logger.debug(`일기 좋아요 해제 쿼리문 작성`)
 
     return { 
         text: `DELETE FROM rb2web.LIKE
@@ -844,7 +845,7 @@ async function removeDiaryLike(diaryId, userId) {
 
 // 일기 좋아요 등록 쿼리문 작성 
 async function addDiaryLike(diaryId, userId) {
-    console.log(`일기 좋아요 등록 쿼리문 작성`)
+    logger.debug(`일기 좋아요 등록 쿼리문 작성`)
 
     return { // 컬럼 6개
         text: `INSERT INTO rb2web.LIKE 
@@ -856,7 +857,7 @@ async function addDiaryLike(diaryId, userId) {
 
 // 일기 좋아요 조회 쿼리문 작성 
 async function selectDiaryLike(diaryId, userId) {
-    console.log(`일기 좋아요 조회 쿼리문 작성`)
+    logger.debug(`일기 좋아요 조회 쿼리문 작성`)
 
     return { 
         text: `SELECT * 
@@ -869,8 +870,8 @@ async function selectDiaryLike(diaryId, userId) {
 
 // 일기 데이터 조회 쿼리문 작성 
 async function selectDiaryInfo(query, startDate, EndDate) {
-    console.log(`space_id값 얻은 후 사진조회 쿼리문 작성`)
-    console.log('query %o:', query);
+    logger.debug(`space_id값 얻은 후 사진조회 쿼리문 작성`)
+    logger.debug('query %o:' + query);
     
     return { 
         text: `SELECT D.diary_id, D.diary_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date 
@@ -886,8 +887,8 @@ async function selectDiaryInfo(query, startDate, EndDate) {
 
 // 타임라인 조회 쿼리문 작성 (추억공간 top 화면)
 async function selectDogInfo(query) {
-    console.log(`타임라인 조회 쿼리문 작성`)
-    console.log('query %o:', query);
+    logger.debug(`타임라인 조회 쿼리문 작성`)
+    logger.debug('query %o:' + query);
 
     return { 
         text: `SELECT
@@ -903,8 +904,8 @@ async function selectDogInfo(query) {
 
 // 타임라인 유저이름 조회 쿼리문 작성 
 async function selectUserInfo(query) {
-    console.log(`타임라인 유저이름 조회 쿼리문 작성`)
-    console.log('query %o:', query);
+    logger.debug(`타임라인 유저이름 조회 쿼리문 작성`)
+    logger.debug('query %o:' + query);
 
     return { 
         text: `SELECT
@@ -920,8 +921,8 @@ async function selectUserInfo(query) {
 
 // 일기정보 수정 쿼리문 작성
 async function changeDiary(query) {
-    console.log(`일기정보 수정 쿼리문 작성`)
-    console.log('query %o:', query);
+    logger.debug(`일기정보 수정 쿼리문 작성`)
+    logger.debug('query %o:' + query);
 
     return { 
         text: `UPDATE DIARY 
@@ -935,8 +936,8 @@ async function changeDiary(query) {
 
 // 일기 사진 url 삭제 쿼리문 작성
 async function removeDiaryPhotoUrls(diary_id) {
-    console.log(`일기 사진 url 삭제 쿼리문 작성`)
-    console.log('diary_id %o:', diary_id);
+    logger.debug(`일기 사진 url 삭제 쿼리문 작성`)
+    logger.debug('diary_id %o:' + diary_id);
 
     return { 
         text: `DELETE FROM DIARY_PHOTO
@@ -947,8 +948,8 @@ async function removeDiaryPhotoUrls(diary_id) {
 
 // 일기 삭제 쿼리문 작성
 async function removeDiary(diary_id) {
-    console.log(`일기 삭제 쿼리문 작성`)
-    console.log('diary_id %o:', diary_id);
+    logger.debug(`일기 삭제 쿼리문 작성`)
+    logger.debug('diary_id %o:' + diary_id);
 
     return { 
         text: `DELETE FROM DIARY
@@ -959,8 +960,8 @@ async function removeDiary(diary_id) {
 
 // 일기사진 조회 쿼리문 작성 2
 async function selectPhotoForS3(diary_id) {
-    console.log(`반려견 정보 조회 쿼리문 작성`)
-    console.log('diary_id %o:', diary_id);
+    logger.debug(`반려견 정보 조회 쿼리문 작성`)
+    logger.debug('diary_id %o:' + diary_id);
 
     return { 
         text: `SELECT bucket, s3key
@@ -972,8 +973,8 @@ async function selectPhotoForS3(diary_id) {
 
 // 일기사진 조회 쿼리문 작성 1
 async function selectPhotoByOneDiary(diary_id) {
-    console.log(`반려견 정보 조회 쿼리문 작성`)
-    console.log('diary_id %o:', diary_id);
+    logger.debug(`반려견 정보 조회 쿼리문 작성`)
+    logger.debug('diary_id %o:' + diary_id);
 
     return { 
         text: `SELECT photo_id, photo_url
@@ -985,8 +986,8 @@ async function selectPhotoByOneDiary(diary_id) {
 
 // 일기 조회 쿼리문 작성
 async function selectDiary(query) {
-    console.log(`반려견 정보 조회 쿼리문 작성`)
-    console.log('query %o:', query);
+    logger.debug(`반려견 정보 조회 쿼리문 작성`)
+    logger.debug('query %o:' + query);
 
     return { 
         text: `SELECT diary_id, emotion, diary_content, DATE_FORMAT(select_date, '%Y-%m-%d') AS select_date
@@ -998,11 +999,11 @@ async function selectDiary(query) {
 
 // DIARY_PHOTO 테이블에 사진URL 저장
 async function addDiaryPhoto(diary_id, photo_url, bucket, key) {
-    console.log(`DIARY_PHOTO 테이블에 사진URL 저장 쿼리문 작성`)
-    console.log('diary_id %o:', diary_id);
-    console.log('photo_url %o:', photo_url);
-    console.log('bucket %o:', bucket);
-    console.log('key %o:', key);
+    logger.debug(`DIARY_PHOTO 테이블에 사진URL 저장 쿼리문 작성`)
+    logger.debug('diary_id %o:' + diary_id);
+    logger.debug('photo_url %o:' + photo_url);
+    logger.debug('bucket %o:' + bucket);
+    logger.debug('key %o:' + key);
     
     return { // 컬럼 6개
         text: `INSERT INTO DIARY_PHOTO 
@@ -1014,8 +1015,8 @@ async function addDiaryPhoto(diary_id, photo_url, bucket, key) {
 
 // DIARY 테이블에 일기 정보 생성
 async function addDiary(query) {
-    console.log(`일기 정보 생성 쿼리문 작성`)
-    console.log('query %o:', query);
+    logger.debug(`일기 정보 생성 쿼리문 작성`)
+    logger.debug('query %o:' + query);
     
     return { // 파라미터 6개
         text: `INSERT INTO DIARY 
@@ -1027,8 +1028,8 @@ async function addDiary(query) {
 
 // DOG 삭제 쿼리문 작성
 async function removeDog(dog_id) {
-    console.log(`DOG 삭제 쿼리문 작성`)
-    console.log('dog_id %o:', dog_id);
+    logger.debug(`DOG 삭제 쿼리문 작성`)
+    logger.debug('dog_id %o:' + dog_id);
 
     return { 
         text: `DELETE FROM DOG
@@ -1039,8 +1040,8 @@ async function removeDog(dog_id) {
 
 // 추억공간 삭제 쿼리문 작성
 async function removeSpace(space_id) {
-    console.log(`추억공간 삭제 쿼리문 작성`)
-    console.log('space_id %o:', space_id);
+    logger.debug(`추억공간 삭제 쿼리문 작성`)
+    logger.debug('space_id %o:' + space_id);
 
     return { 
         text: `DELETE FROM MEMORY_SPACE
@@ -1051,8 +1052,8 @@ async function removeSpace(space_id) {
 
 // 추억공간 조회 쿼리문 작성
 async function selectSpace(space_id) {
-    console.log(`반려견 정보 조회 쿼리문 작성`)
-    console.log('space_id %o:', space_id);
+    logger.debug(`반려견 정보 조회 쿼리문 작성`)
+    logger.debug('space_id %o:' + space_id);
 
     return { 
         text: `SELECT *
@@ -1064,8 +1065,8 @@ async function selectSpace(space_id) {
 
 // 반려견 정보 조회 쿼리문 작성
 async function selectDog(dog_id) {
-    console.log(`반려견 정보 조회 쿼리문 작성`)
-    console.log('dog_id %o:', dog_id);
+    logger.debug(`반려견 정보 조회 쿼리문 작성`)
+    logger.debug('dog_id %o:' + dog_id);
 
     return { 
         text: `SELECT dog_name, dog_breed, dog_sex, dog_prof_img, DATE_FORMAT(dog_birth, '%Y-%m-%d') AS dog_birth
@@ -1077,9 +1078,9 @@ async function selectDog(dog_id) {
 
 // 추억공간 배경사진 수정 쿼리문 작성
 async function changeBackgroundImg(query, file_location) {
-    console.log(`추억공간 배경사진 수정 쿼리문 작성`)
-    console.log('query %o:', query);
-    console.log('file_location %o:', file_location);
+    logger.debug(`추억공간 배경사진 수정 쿼리문 작성`)
+    logger.debug('query %o:' + query);
+    logger.debug('file_location %o:' + file_location);
 
     return { 
         text: `UPDATE DOG 
@@ -1092,9 +1093,9 @@ async function changeBackgroundImg(query, file_location) {
 
 // 추억공간 반려견 정보 수정 쿼리문 작성
 async function changeDog(query, file_location) {
-    console.log(`추억공간 생성 쿼리문 작성`)
-    console.log('query %o:', query);
-    console.log('file_location %o:', file_location);
+    logger.debug(`추억공간 생성 쿼리문 작성`)
+    logger.debug('query %o:' + query);
+    logger.debug('file_location %o:' + file_location);
 
     // 사진수정한다면 S3 url 변경하기
     if (file_location != null) {
@@ -1125,9 +1126,9 @@ async function changeDog(query, file_location) {
 
 // 추억공간 생성 쿼리문 작성
 async function addSpace(user_id, dog_id) {
-    console.log(`추억공간 생성 쿼리문 작성`)
-    console.log('user_id %o:', user_id);
-    console.log('dog_id %o:', dog_id);
+    logger.debug(`추억공간 생성 쿼리문 작성`)
+    logger.debug('user_id %o:' + user_id);
+    logger.debug('dog_id %o:' + dog_id);
 
     return {
         text: `INSERT INTO MEMORY_SPACE 
@@ -1139,10 +1140,10 @@ async function addSpace(user_id, dog_id) {
 
 // DOG테이블에 반려견 정보 생성
 async function addDog(user_id, query, file_location) {
-    console.log(`반려견 정보 생성 쿼리문 작성`)
-    console.log('user_id %o:', user_id);
-    console.log('query %o:', query);
-    console.log('file_location %o:', file_location);
+    logger.debug(`반려견 정보 생성 쿼리문 작성`)
+    logger.debug('user_id %o:' + user_id);
+    logger.debug('query %o:' + query);
+    logger.debug('file_location %o:' + file_location);
 
     return { // 파라미터 7개
         text: `INSERT INTO DOG 
@@ -1154,8 +1155,8 @@ async function addDog(user_id, query, file_location) {
 
 // 이메일로 user_id 찾기
 async function getUserId(email) {
-    console.log(`회원가입 쿼리문 작성`)
-    console.log('email %o:', email);
+    logger.debug(`회원가입 쿼리문 작성`)
+    logger.debug('email %o:' + email);
 
     return {
         text: `SELECT user_id 
@@ -1171,14 +1172,14 @@ function mySQLQuery(query) {
         try {
           connection.query(query.text, query.params, function(err, rows, fields) {
                 if (err) {
-                    console.log(`mySQLQuery() err: ${err} `)
+                    logger.debug(`mySQLQuery() err: ${err} `)
                     return resolve(9999); // reject하지말고 9999응답하기
                 } else {
                     return resolve(rows); 
                 }
             });
         } catch (err) {
-            console.log(`catch mySQLQuery() err: ${err} `)
+            logger.debug(`catch mySQLQuery() err: ${err} `)
             return resolve(9999); // reject하지말고 9999응답하기
         }
     })
