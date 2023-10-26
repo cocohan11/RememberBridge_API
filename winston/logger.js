@@ -8,7 +8,6 @@ const process = require("process"); // 프로그램과 관련된 정보를 나�
 const logDir = `${appRoot}/logs`; // logs 디렉토리 하위에 로그 파일 저장
 const colorizer = winston.format.colorize();
 const { combine, timestamp, printf } = winston.format;
-const util = require("util");
 /** Logging Levels
 {
   error: 0,

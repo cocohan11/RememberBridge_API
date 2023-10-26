@@ -82,6 +82,7 @@ spaceMng.prototype.changeComment = async (query, apiName) => {
 
 /** 댓글 모두보기
  * 1. 댓글 전체 응답 (Comment 테이블)
+ * 2. 댓글 갯수
 */
 spaceMng.prototype.getDiaryComments = async (query, apiName) => {
     
@@ -93,10 +94,18 @@ spaceMng.prototype.getDiaryComments = async (query, apiName) => {
     });
     if (comment_info.length == 0) return 1005;
 
+    // 2.count
+    let count = await mySQLQuery(await selectDiaryCommentCount(query.diary_id, apiName))
+    logger.debug({
+        API: apiName,
+        count: count.count
+    });
+
 
     // 최종응답값에 들어갈 데이터
     return {
-        comment_info
+        comment_info,
+        count: count.count
     }
 }
 
