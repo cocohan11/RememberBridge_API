@@ -191,7 +191,7 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId, apiName) => {
     if (emotionAndContent.length == 0) return 1005;
 
     // 3. writer
-    let writer = await mySQLQuery(await selectDiaryWriter(userId, apiName))
+    let writer = await mySQLQuery(await selectDiaryWriter(userId, apiName)) // X
     logger.debug({
         API: apiName,
         writer: writer,
@@ -359,7 +359,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     
     
     // 1. DB) DOG 테이블에서 dog_info 리턴
-    let dog_info = await mySQLQuery(await selectDogInfo(query, apiName))
+    let dog_info = await mySQLQuery(await selectDogInfo(query, apiName)) // OK
     logger.debug({
         API: apiName,
         dog_info: dog_info,
@@ -367,8 +367,13 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
 
+    
+    // dog_id로 스페이스테이블에서
+    //user_id알아내기 -> 기존쿼리사용
+
+
     // 2. DB) USER 테이블에서 user_info 리턴
-    let user_info = await mySQLQuery(await selectUserInfo(query, apiName))
+    let user_info = await mySQLQuery(await selectUserInfo(query, apiName)) // X
     logger.debug({
         API: apiName,
         user_info: user_info,
@@ -392,34 +397,51 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     });
     
 
+    // 변환된 데이터를 저장할 빈 배열
+    const diaryInfo = [];
+
     // 일기를 "diary_id"를 기준으로 그룹화할 객체
-    const groupedDiaries = {};
     logger.debug({
         API: apiName,
-        groupedDiaries: groupedDiaries,
+        diaryInfo: diaryInfo,
         detail: '현재 비어있음',
     });
-    
-    diary_info.forEach((result) => {
+
+    // diary_info 배열을 순회
+    diary_info.forEach(result => {
         const { diary_id, diary_content, photo_url, select_date } = result;
-        if (!groupedDiaries[select_date]) {  // select_date 키로 된 객체가 없다면
-            groupedDiaries[select_date] = {};  // 새로운 빈 객체를 만들어 해당 키(select_date)로 추가한다.
+      
+        // 날짜를 가진 객체를 찾거나 만듦
+        let dateEntry = diaryInfo.find(entry => entry[select_date]);
+        if (!dateEntry) {
+            dateEntry = { [select_date]: [] };
+            diaryInfo.push(dateEntry);
         }
-        if (!groupedDiaries[select_date][diary_id]) {
-            groupedDiaries[select_date][diary_id] = [];
+
+        // diary_id를 가진 객체를 찾거나 만듦
+        let idEntry = dateEntry[select_date].find(entry => entry[diary_id]);
+        if (!idEntry) {
+            idEntry = { [diary_id]: [] };
+            dateEntry[select_date].push(idEntry);
         }
-        groupedDiaries[select_date][diary_id].push({ diary_content, photo_url });
+
+        // 해당 id 객체에 데이터를 추가
+        idEntry[diary_id].push({
+            diary_content,
+            photo_url
+        });
     });
+
+
     logger.debug({
         API: apiName,
-        groupedDiaries: JSON.stringify(groupedDiaries, null, 2), // JSON 형태로 출력
-        detail: 'for문',
-     });
+        diaryInfo: JSON.stringify(diaryInfo, null, 2), // JSON 형태로 출력
+    });
 
     return {
         dog_info: dog_info,
         user_info: user_info,
-        diary_info: groupedDiaries,
+        diary_info: diaryInfo,
     }; // 원하는 출력 모양을 추가함
 }
 
