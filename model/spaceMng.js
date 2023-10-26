@@ -151,6 +151,7 @@ spaceMng.prototype.addComment = async (query, apiName) => {
         comment_info = {
             comment_id:diary_comment[0].comment_id,
             user_name:diary_comment[0].user_name,
+            user_id:query.user_id,
             comment_text:diary_comment[0].comment_text,
             count:comment_count[0].count
         }
@@ -1054,7 +1055,7 @@ async function selectTheDiaryComment(comment_id, apiName) {
     });
 
     return { 
-        text: `SELECT COMMENT.comment_id, USER.user_name, COMMENT.comment_text
+        text: `SELECT COMMENT.comment_id, USER.user_name, USER.user_id, COMMENT.comment_text
                 FROM COMMENT
                 INNER JOIN USER ON COMMENT.user_id = USER.user_id
                 WHERE COMMENT.comment_id = ? ; 
@@ -1073,7 +1074,7 @@ async function selectDiaryComment(diaryId, limit, apiName) {
     });
 
     return { 
-        text: `SELECT COMMENT.comment_id, USER.user_name, COMMENT.comment_text
+        text: `SELECT COMMENT.comment_id, USER.user_name, USER.user_id, COMMENT.comment_text
                 FROM COMMENT
                 INNER JOIN USER ON COMMENT.user_id = USER.user_id
                 WHERE diary_id = ?
