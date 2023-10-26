@@ -175,7 +175,7 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId, apiName) => {
     
     
     // 1. like
-    let like = await mySQLQuery(await selectDiaryLike(diaryId, userId, apiName))
+    let like = await mySQLQuery(await selectDiaryLike(diaryId, userId, apiName)) // userId: 방문자id
     logger.debug({
         API: apiName,
         like: like,
@@ -191,7 +191,7 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId, apiName) => {
     if (emotionAndContent.length == 0) return 1005;
 
     // 3. writer
-    let writer = await mySQLQuery(await selectDiaryWriter(userId, apiName)) // X
+    let writer = await mySQLQuery(await selectDiaryWriter(diaryId, apiName)) // 방문자가 아닌 일기작성자 이름이어야함. 그래서 일기id를 받음
     logger.debug({
         API: apiName,
         writer: writer,
@@ -219,7 +219,7 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId, apiName) => {
     });
     
     // 5.count
-    let count = await mySQLQuery(await selectDiaryCommentCount(query.diary_id, apiName))
+    let count = await mySQLQuery(await selectDiaryCommentCount(diaryId, apiName))
     logger.debug({
         API: apiName,
         count: count,
@@ -1087,19 +1087,24 @@ async function selectDiaryComment(diaryId, limit, apiName) {
 
 
 // 일기 작성자 조회 쿼리문 작성 
-async function selectDiaryWriter(userId, apiName) {
+async function selectDiaryWriter(diaryId, apiName) {
     logger.debug({
         API: apiName+' 쿼리문 작성',
-        userId: userId,
+        diaryId: diaryId,
         function: 'selectDiaryWriter()'
     });
 
     return { 
         text: `SELECT user_name as writer 
-                FROM USER 
-                WHERE user_id = ?;
+                FROM USER
+                WHERE user_id = (
+                    SELECT m.user_id
+                    FROM DIARY as d
+                    LEFT JOIN MEMORY_SPACE as m on m.space_id = d.space_id
+                    WHERE diary_id = ?
+                )
         `, 
-        params: [userId] 
+        params: [diaryId] 
     }; 
 }
 
