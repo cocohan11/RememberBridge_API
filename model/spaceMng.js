@@ -359,7 +359,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     
     
     // 1. DB) DOG 테이블에서 dog_info 리턴
-    let dog_info = await mySQLQuery(await selectDogInfo(query, apiName)) // OK
+    let dog_info = await mySQLQuery(await selectDogInfo(query, apiName)) 
     logger.debug({
         API: apiName,
         dog_info: dog_info,
@@ -373,7 +373,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
 
 
     // 2. DB) USER 테이블에서 user_info 리턴
-    let user_info = await mySQLQuery(await selectUserInfo(query, apiName)) // X
+    let user_info = await mySQLQuery(await selectUserInfo(query, apiName)) 
     logger.debug({
         API: apiName,
         user_info: user_info,
@@ -1224,12 +1224,12 @@ async function selectUserInfo(query, apiName) {
     });
 
     return { 
-        text: `SELECT
-                user_name
-            FROM USER 
-            WHERE user_id = ?;
+        text: `SELECT u.user_name, u.user_prof_img 
+            FROM MEMORY_SPACE as m
+            LEFT JOIN USER as u on m.user_id = u.user_id 
+            WHERE m.dog_id = ?
        `, 
-        params: [query.user_id] 
+        params: [query.dog_id] 
     }; 
 }
 
