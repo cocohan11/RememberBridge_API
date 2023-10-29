@@ -391,47 +391,37 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     
 
     // 3. DB) 일기 데이터 얻기
-    let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate, apiName))
-    logger.debug({
-        API: apiName,
-        diary_info: diary_info,
+let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate, apiName));
+logger.debug({
+    API: apiName,
+    diary_info: diary_info,
+});
+
+// 변환된 데이터를 저장할 빈 객체
+const diaryInfo = {};
+
+// diary_info 배열을 순회
+diary_info.forEach(result => {
+    const { diary_id, diary_content, photo_url, select_date } = result;
+
+    // 날짜를 가진 객체를 찾거나 만듦
+    if (!diaryInfo[select_date]) {
+        diaryInfo[select_date] = {};
+    }
+
+    // diary_id를 가진 객체를 찾거나 만듦
+    if (!diaryInfo[select_date][diary_id]) {
+        diaryInfo[select_date][diary_id] = [];
+    }
+
+    // 데이터를 추가
+    diaryInfo[select_date][diary_id].push({
+        diary_content,
+        photo_url,
     });
-    
+});
 
-    // 변환된 데이터를 저장할 빈 배열
-    const diaryInfo = [];
 
-    // 일기를 "diary_id"를 기준으로 그룹화할 객체
-    logger.debug({
-        API: apiName,
-        diaryInfo: diaryInfo,
-        detail: '현재 비어있음',
-    });
-
-    // diary_info 배열을 순회
-    diary_info.forEach(result => {
-        const { diary_id, diary_content, photo_url, select_date } = result;
-      
-        // 날짜를 가진 객체를 찾거나 만듦
-        let dateEntry = diaryInfo.find(entry => entry[select_date]);
-        if (!dateEntry) {
-            dateEntry = { [select_date]: [] };
-            diaryInfo.push(dateEntry);
-        }
-
-        // diary_id를 가진 객체를 찾거나 만듦
-        let idEntry = dateEntry[select_date].find(entry => entry[diary_id]);
-        if (!idEntry) {
-            idEntry = { [diary_id]: [] };
-            dateEntry[select_date].push(idEntry);
-        }
-
-        // 해당 id 객체에 데이터를 추가
-        idEntry[diary_id].push({
-            diary_content,
-            photo_url
-        });
-    });
 
 
     logger.debug({

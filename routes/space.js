@@ -31,7 +31,7 @@ router.get('/diary/comment/delete/:comment_id?', async (req, res) => {
   } 
 
   // DB
-  const result = await spaceMngDB.removeDiaryComment(req.params);
+  const result = await spaceMngDB.removeDiaryComment(req.params, apiName);
   logger.info({
     API: apiName,
     result: result
@@ -58,7 +58,7 @@ router.post('/diary/comment/edit', async (req, res) => {
   }
 
   // DB
-  const plusResult = await spaceMngDB.changeComment(req.body);
+  const plusResult = await spaceMngDB.changeComment(req.body, apiName);
   logger.info({
     API: apiName,
     plusResult: plusResult
@@ -89,7 +89,7 @@ router.get('/diary/comment/:diary_id?', async (req, res) => {
   } 
 
   // DB
-  const plusResult = await spaceMngDB.getDiaryComments(req.params);
+  const plusResult = await spaceMngDB.getDiaryComments(req.params, apiName);
   logger.info({
     API: apiName,
     plusResult: plusResult
@@ -120,7 +120,7 @@ router.post('/diary/comment', async (req, res) => {
   }
 
   // DB
-  const plusResult = await spaceMngDB.addComment(req.body);
+  const plusResult = await spaceMngDB.addComment(req.body, apiName);
   logger.info({
     API: apiName,
     plusResult: plusResult
@@ -156,7 +156,7 @@ router.get('/diary/info/detail/:diary_id?/:user_id?', async (req, res) => {
   } 
 
   // DB
-  const plusResult = await spaceMngDB.getDiaryDetail(diaryId, userId);
+  const plusResult = await spaceMngDB.getDiaryDetail(diaryId, userId, apiName);
   logger.info({
     API: apiName,
     plusResult: plusResult
@@ -191,7 +191,7 @@ router.get('/diary/like/:diary_id/:user_id', async (req, res) => {
   } 
 
   // DB
-  const result = await spaceMngDB.setLike(diaryId, userId);
+  const result = await spaceMngDB.setLike(diaryId, userId, apiName);
   logger.info({
     API: apiName,
     result: result
@@ -229,7 +229,7 @@ router.post('/timeline/change/img', uploadForDog.single('dog_prof_img'), async (
     } 
   
     // DB
-    const result = await spaceMngDB.setDogImg(req.body, req.file ? req.file.location : null); // .location에서 에러나서 null처리함
+    const result = await spaceMngDB.setDogImg(req.body, req.file ? req.file.location : null, apiName); // .location에서 에러나서 null처리함
     logger.info({
       API: apiName,
       result: result // 성공시) result=2000 응답
@@ -265,7 +265,7 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
 
 
   // DB
-  const result = await spaceMngDB.changeBackgroundImg(req.body, req.file ? req.file.location : null); // .location에서 에러나서 null처리함
+  const result = await spaceMngDB.changeBackgroundImg(req.body, req.file ? req.file.location : null, apiName); // .location에서 에러나서 null처리함
   logger.info({
     API: apiName,
     result: result // 성공시) result=2000 응답
@@ -296,7 +296,7 @@ router.get('/timeline/:dog_id/:year/:month', async (req, res) => {
   } 
 
   // DB
-  const plusResult = await spaceMngDB.getTimeline(req.params);
+  const plusResult = await spaceMngDB.getTimeline(req.params, apiName);
   logger.info({
     API: apiName,
     plusResult: plusResult
@@ -335,7 +335,7 @@ router.post('/diary/edit', uploadForTimelines.array('diary_imgs', 5), async (req
   });
 
   // DB
-  const result = await spaceMngDB.changeDiary(req.body, req.files, fileInfo);
+  const result = await spaceMngDB.changeDiary(req.body, req.files, fileInfo, apiName);
   logger.info({
     API: apiName,
     result: result
@@ -368,7 +368,7 @@ router.get('/diary/delete/:diary_id?', async (req, res) => {
   } 
 
   // DB
-  const result = await spaceMngDB.removeDiary(req.params);
+  const result = await spaceMngDB.removeDiary(req.params, apiName);
   logger.info({
     API: apiName,
     result: result
@@ -399,7 +399,7 @@ router.get('/diary/info/:diary_id?', async (req, res) => {
   } 
 
   // DB
-  const plusResult = await spaceMngDB.getDiary(req.params);
+  const plusResult = await spaceMngDB.getDiary(req.params, apiName);
   logger.info({
     API: apiName,
     plusResult: plusResult
@@ -438,7 +438,7 @@ router.post('/diary', uploadForTimelines.array('diary_imgs', 5), async (req, res
   });
   
   // DB
-  const diary_id = await spaceMngDB.addDiary(req.body, fileInfo);
+  const diary_id = await spaceMngDB.addDiary(req.body, fileInfo, apiName);
   logger.info({
     API: apiName,
     diary_id: diary_id
@@ -472,7 +472,7 @@ router.post('/delete', async (req, res) => {
     } 
   
     // DB
-    const result = await spaceMngDB.removeSpace(req.body); 
+    const result = await spaceMngDB.removeSpace(req.body, apiName); 
     logger.info({
       API: apiName,
       result: result
@@ -499,7 +499,7 @@ router.get('/dog/info/:dog_id?', async (req, res) => {
     } 
   
     // DB
-    const result = await spaceMngDB.getDogInfo(req.params.dog_id); 
+    const result = await spaceMngDB.getDogInfo(req.params.dog_id, apiName); 
     logger.info({
       API: apiName,
       result: result
@@ -534,7 +534,7 @@ router.post('/dog/edit', uploadForDog.single('dog_prof_img'), async (req, res) =
     } 
   
     // DB
-    const result = await spaceMngDB.changeDog(req.body, req.file ? req.file.location : null); // .location에서 에러나서 null처리함
+    const result = await spaceMngDB.changeDog(req.body, req.file ? req.file.location : null, apiName); // .location에서 에러나서 null처리함
     logger.info({
       API: apiName,
       result: result
@@ -563,7 +563,7 @@ router.post('/', uploadForDog.single('dog_prof_img'), async (req, res) => { // �
     } 
 
     // DB
-    const plusResult = await spaceMngDB.addSpace(req.body, req.file ? req.file.location : null); // .location에서 에러나서 null처리함
+    const plusResult = await spaceMngDB.addSpace(req.body, req.file ? req.file.location : null, apiName); // .location에서 에러나서 null처리함
     logger.info({
       API: apiName,
       plusResult: plusResult
