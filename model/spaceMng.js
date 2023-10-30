@@ -381,20 +381,30 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   // 변환된 데이터를 저장할 빈 객체
   const diaryInfo = {};
   let arrPhoto = [];
+  let diaryID = 0;
 
   // diary_info 배열을 순회
   for (const [index, result] of diary_info.entries()) {
     const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
+    logger.debug(`${index}`);
+    logger.debug(`${photo_url}`);
+    logger.debug(`${diaryID}`);
+    logger.debug(`${diary_id}`);
+    
     // 날짜를 가진 객체를 찾거나 만듦
     if (!diaryInfo[select_date]) {
       diaryInfo[select_date] = [];
     }
-    logger.debug(`${index}`);
-    logger.debug(`${photo_url}`);
-    
     
     // 재료
+    // 같은 일기가 아니라면
+    if (diaryID != diary_id) {
+      logger.debug(`초기화%%%%%%%%%%%%%`);
+      arrPhoto = [];
+    }
     arrPhoto.push(photo_url);
+    logger.debug(`*********arrPhoto : ${arrPhoto}`);
+
     aa = { 
       user_name,
       user_prof_img,
@@ -411,27 +421,15 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     // 날짜 안에 일기 데이터가 없다면
     if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
       diaryInfo[select_date].push(cc); // 객체를 통째로 추가
+    } 
 
-
-    // 날짜 안에 일기 데이터가 이미 있다면
-    } else { // 기존 객체에 사진만 추가하기
-      
-      // 일기데이터안에 사진이 있다면
-      diaryInfo[select_date][0][diary_id] = bb;
-      일기 = diaryInfo[select_date][0][diary_id];
-
-      
-      logger.debug(`인덱스 : ${index}`);
-      logger.debug(`photos 조회1 : \n${JSON.stringify(일기, null, 2)}`);
-      logger.debug('photos 조회2 :' + 일기[0]["photos"]);
-
-      diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
-      arrPhoto = [];
-    }
+    diaryInfo[select_date][0][diary_id] = bb;
+    diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
+    diaryID = diary_id;
   };
 
   return {
-    dog_info: dog_info,
+    // dog_info: dog_info,
     diary_info: diaryInfo,
   }; // 원하는 출력 모양을 추가함
 };
