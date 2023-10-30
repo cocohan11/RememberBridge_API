@@ -429,7 +429,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   };
 
   return {
-    // dog_info: dog_info,
+    dog_info: dog_info,
     diary_info: diaryInfo,
   }; // 원하는 출력 모양을 추가함
 };
