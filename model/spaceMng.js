@@ -365,17 +365,6 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   });
   if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
-  // dog_id로 스페이스테이블에서
-  //user_id알아내기 -> 기존쿼리사용
-
-  // 2. DB) USER 테이블에서 user_info 리턴
-  let user_info = await mySQLQuery(await selectUserInfo(query, apiName));
-  logger.debug({
-    API: apiName,
-    user_info: user_info,
-  });
-  if (!user_info) return 1005; // 조회된 데이터가 없으면 1005 응답
-
 
   // 페이징에 필요한 날짜 추출 (2023-09-01 ~ 2023-09-30)
   let dates = formattedDate(query.year, query.month);
@@ -387,56 +376,59 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
 
   // 3. DB) 일기 데이터 얻기
   let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate, apiName));
-  // diary_info 라는 재료를 완성시키기
-  for (i = 0; i < diary_info.length; i++) {
-    logger.debug(i);
-    diary_info[i]["user_name"] = user_info[0].user_name;
-    diary_info[i]["user_prof_img"] = user_info[0].user_prof_img;
-  } 
 
 
   // 변환된 데이터를 저장할 빈 객체
   const diaryInfo = {};
-  let photos = [];
-
+  let arrPhoto = [];
 
   // diary_info 배열을 순회
-  diary_info.forEach((result) => {
+  for (const [index, result] of diary_info.entries()) {
     const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
-
-    diary_info.push(user_info)
-
     // 날짜를 가진 객체를 찾거나 만듦
     if (!diaryInfo[select_date]) {
       diaryInfo[select_date] = [];
     }
-
-    // 사진만 배열로 만들기 (제일 작은 단위)
-    photos.push(photo_url);
-    logger.debug(photos);
-
-
-    aa = { // 기본객체
+    logger.debug(`${index}`);
+    logger.debug(`${photo_url}`);
+    
+    
+    // 재료
+    arrPhoto.push(photo_url);
+    aa = { 
       user_name,
       user_prof_img,
       diary_content,
-      photo_url :photos,
+      photos : [], // 사진만 배열로 만들기 (제일 작은 단위)
     };
+    bb = [];
+    bb.push(aa);
+    cc = { // 일기 id로 감싸기
+      [diary_id]: aa
+    }; 
 
-    cc = { [diary_id]: aa }; // 제일 큰 객체
- 
-    if (!diaryInfo[select_date][0]) {
-      // select_date 내에 데이터가 없다면
-      diaryInfo[select_date].push(cc); // cc 객체를 통째로 추가
-    } else {
-      diaryInfo[select_date][0][diary_id] = aa;
+
+    // 날짜 안에 일기 데이터가 없다면
+    if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
+      diaryInfo[select_date].push(cc); // 객체를 통째로 추가
+
+
+    // 날짜 안에 일기 데이터가 이미 있다면
+    } else { // 기존 객체에 사진만 추가하기
+      
+      // 일기데이터안에 사진이 있다면
+      diaryInfo[select_date][0][diary_id] = bb;
+      일기 = diaryInfo[select_date][0][diary_id];
+
+      
+      logger.debug(`인덱스 : ${index}`);
+      logger.debug(`photos 조회1 : \n${JSON.stringify(일기, null, 2)}`);
+      logger.debug('photos 조회2 :' + 일기[0]["photos"]);
+
+      diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
+      arrPhoto = [];
     }
-  });
-
-  logger.debug({
-    API: 're33',
-    diaryInfo: JSON.stringify(diaryInfo, null, 2), // JSON 형태로 출력
-  });
+  };
 
   return {
     dog_info: dog_info,
@@ -1209,9 +1201,10 @@ async function selectDiaryInfo(query, startDate, EndDate, apiName) {
   });
 
   return {
-    text: `SELECT D.diary_id, D.diary_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date 
+    text: `SELECT D.diary_id, D.diary_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date, U.user_name, U.user_prof_img 
                 FROM DIARY AS D
                 LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+                LEFT JOIN USER AS U ON D.user_id = U.user_id
                 WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? )
                 AND D.select_date >= ? AND D.select_date <= ?
                 ORDER BY D.select_date ASC ;
@@ -1388,12 +1381,13 @@ async function addDiary(query, apiName) {
   });
 
   return {
-    // 파라미터 6개
+    // 파라미터 7개
     text: `INSERT INTO DIARY 
-                (space_id, select_date, emotion, diary_content, create_at, update_at) 
-                VALUES (?, ?, ?, ?, now(), null)`,
+                (space_id, user_id, select_date, emotion, diary_content, create_at, update_at) 
+                VALUES (?, ?, ?, ?, ?, now(), null)`,
     params: [
       query.space_id,
+      query.user_id,
       query.select_date,
       query.emotion,
       query.diary_content,

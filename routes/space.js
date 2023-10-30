@@ -426,7 +426,7 @@ router.post('/diary', uploadForTimelines.array('diary_imgs', 5), async (req, res
   });
 
   // 파라미터값 누락 확인
-  if (req.files.length == 0 || !req.body.space_id || !req.body.select_date || !req.body.emotion || !req.body.diary_content) { // 사진 필수값 (최소1장)
+  if (req.files.length == 0 || !req.body.space_id || !req.body.user_id || !req.body.select_date || !req.body.emotion || !req.body.diary_content) { // 사진 필수값 (최소1장)
     return resCode.returnResponseCode(res, 1002, apiName, null, null);
   }
 
