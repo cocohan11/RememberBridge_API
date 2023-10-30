@@ -376,6 +376,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   });
   if (!user_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
+
   // 페이징에 필요한 날짜 추출 (2023-09-01 ~ 2023-09-30)
   let dates = formattedDate(query.year, query.month);
   logger.debug({
@@ -383,63 +384,66 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     dates: dates,
   });
 
+
   // 3. DB) 일기 데이터 얻기
   let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate, apiName));
-    
-  logger.debug({
-    API: apiName,
-    diary_info: diary_info,
-  });
+  // diary_info 라는 재료를 완성시키기
+  for (i = 0; i < diary_info.length; i++) {
+    logger.debug(i);
+    diary_info[i]["user_name"] = user_info[0].user_name;
+    diary_info[i]["user_prof_img"] = user_info[0].user_prof_img;
+  } 
+
 
   // 변환된 데이터를 저장할 빈 객체
   const diaryInfo = {};
+  let photos = [];
+
 
   // diary_info 배열을 순회
   diary_info.forEach((result) => {
-    const { diary_id, diary_content, photo_url, select_date } = result;
+    const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
+
+    diary_info.push(user_info)
 
     // 날짜를 가진 객체를 찾거나 만듦
     if (!diaryInfo[select_date]) {
       diaryInfo[select_date] = [];
     }
 
-    aa = { // 제일 작은 객체
+    // 사진만 배열로 만들기 (제일 작은 단위)
+    photos.push(photo_url);
+    logger.debug(photos);
+
+
+    aa = { // 기본객체
+      user_name,
+      user_prof_img,
       diary_content,
-      photo_url,
+      photo_url :photos,
     };
 
-    bb = [];
-    bb.push(aa);
-
-    cc = { [diary_id]: bb }; // 제일 큰 객체
-
-
+    cc = { [diary_id]: aa }; // 제일 큰 객체
+ 
     if (!diaryInfo[select_date][0]) {
       // select_date 내에 데이터가 없다면
-      diaryInfo[select_date].push(cc); // bb 객체를 통째로 추가
+      diaryInfo[select_date].push(cc); // cc 객체를 통째로 추가
     } else {
-      // select_date 내에 데이터가 있다면
-      if (!diaryInfo[select_date][0][diary_id]) {
-        // 0번째 객체 내에 diary_id가 없다면
-        diaryInfo[select_date][0][diary_id] = bb;
-      } else {
-        // 0번째 객체 내에 diary_id를 가 있다면
-        diaryInfo[select_date][0][diary_id].push(aa);
-      }
+      diaryInfo[select_date][0][diary_id] = aa;
     }
   });
 
   logger.debug({
-    API: apiName,
+    API: 're33',
     diaryInfo: JSON.stringify(diaryInfo, null, 2), // JSON 형태로 출력
   });
 
   return {
     dog_info: dog_info,
-    user_info: user_info,
     diary_info: diaryInfo,
   }; // 원하는 출력 모양을 추가함
 };
+
 
 /** 일기 수정
  * 0. 미들웨어로 S3에 새로받은 사진 저장하기
