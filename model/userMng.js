@@ -12,7 +12,8 @@ const logger = require("../winston/logger");
 require("dotenv").config(); // 환경변수모듈
 const {
     JWT_ACCESS_TOKEN_KEY, JWT_REFRESH_TOKEN_KEY,
-    KAKAO_REST_API_KEY, KAKAO_REDIRECT_URI, KAKAO_CLIENT_SECRET
+    KAKAO_REST_API_KEY, KAKAO_REDIRECT_URI, KAKAO_CLIENT_SECRET,
+    NAVER_API_KEY, NAVER_SECRET_KEY
 } = process.env;
 function userMng() {}
 
@@ -235,7 +236,7 @@ userMng.prototype.leaveSns = async (query, apiName) => { // 이메일, sns type
     // 카카오인지 네이버인지 구분하기
 
     // 액세스토큰 갱신하기
-    const kakaoAccessToken = await RenewalKakaoToken(refresh_token); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
+    const kakaoAccessToken = await RenewalKakaoToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
     logger.debug({
         API: apiName,
         kakaoAccessToken: kakaoAccessToken,
@@ -289,7 +290,7 @@ userMng.prototype.logoutSns = async (query, apiName) => {
     // 카카오인지 네이버인지 구분하기
 
     // 액세스토큰 갱신하기
-    const kakaoAccessToken = await RenewalKakaoToken(refresh_token); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
+    const kakaoAccessToken = await RenewalKakaoToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
     logger.debug({
         API: apiName,
         kakaoAccessToken: kakaoAccessToken, 
@@ -328,7 +329,17 @@ userMng.prototype.addSnsUser = async (query, apiName) => {
     // 이메일 중복확인
     // 존재하는 이멜 -> 로그인
     // 존재하지 않는 이멜 -> 회원가입
-    const result = await joinKakao(query);
+    
+    // 카카오
+    if (query.login_sns_type === 'K') {
+        result = await joinKakao(query, apiName);
+
+    // 네이버
+    } else if (query.login_sns_type === 'N') {
+        result = await joinNaver(query, apiName);
+    
+    } else { return 9999; }
+
     return result;
 };
 
@@ -602,6 +613,75 @@ async function RenewalKakaoToken(refresh_token, apiName) {
     return kakaoAccessToken;
 }
 
+// 네이버 토큰발급, 유저정보조회
+async function joinNaver(query, apiName) {
+    // 네이버 토큰을 받아온다
+
+    const {
+        data: { access_token: NaverAccessToken, refresh_token: NaverRefreshToken },
+    } = await axios('https://nid.naver.com/oauth2.0/token', {
+        params: {
+            grant_type: 'authorization_code',
+            client_id: NAVER_API_KEY,
+            state: 'test',
+            code: query.code, // 파라미터 변수로 수정하기
+            client_secret: NAVER_SECRET_KEY,
+        },
+    });
+    logger.debug({
+        API: apiName,
+        query_code: query.code,
+        NaverAccessToken: NaverAccessToken,
+        NaverRefreshToken: NaverRefreshToken,
+    });
+
+
+    // 네이버 유저 정보를 받아온다
+    const { data: NaverUser } = await axios('https://openapi.naver.com/v1/nid/me', {
+        headers: {
+            Authorization: `Bearer ${NaverAccessToken}`,
+        },
+    });
+    
+    logger.debug({
+        API: apiName,
+        NaverUser: NaverUser,
+        id: NaverUser.response.id,
+        nickname: NaverUser.response.nickname,
+        profile_image: NaverUser.response.profile_image,
+        email: NaverUser.response.email,
+        name: NaverUser.response.name,
+    });
+
+    // 네이버 회원정보없으면 DB에 회원추가하기
+    const result = await processLoginOrRegister(NaverUser, NaverRefreshToken, query.login_sns_type, apiName);
+    logger.debug(`result processLoginOrRegister : ${result} `);
+    logger.debug({
+        API: apiName,
+        result: result,
+        function: 'processLoginOrRegister()'
+    });
+
+    // 응답값
+    return new Promise((resolve, reject) => {
+        mySQLQuery(queryGetUser_sns(NaverUser.response.email, apiName)) // 쿼리문 실행
+            .then(async (res) => {
+                logger.debug({
+                    API: apiName,
+                    res_length: res.length
+                });
+                return resolve(selectUserInfo(res[res.length - 1]));
+            })
+            .catch((err) => {
+                logger.error({
+                    API: apiName,
+                    error: err
+                });
+                return resolve(9999);
+            });
+    });
+}
+
 // 카카오 토큰발급, 유저정보조회
 async function joinKakao(query, apiName) {
     // 카카오 토큰을 받아온다
@@ -640,7 +720,7 @@ async function joinKakao(query, apiName) {
     });
 
     // 카카오 회원정보없으면 DB에 회원추가하기
-    const result = await processLoginOrRegister(kakaoUser, kakaoRefreshToken);
+    const result = await processLoginOrRegister(kakaoUser, kakaoRefreshToken, query.login_sns_type, apiName);
     logger.debug(`result processLoginOrRegister : ${result} `);
     logger.debug({
         API: apiName,
@@ -669,16 +749,37 @@ async function joinKakao(query, apiName) {
 }
 
 // 이메일 중복확인 후 DB에 회원정보없으면 회원가입하기
-async function processLoginOrRegister(kakaoUser, kakaoRefreshToken, apiName) {
+async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, apiName) {
     try {
-        const res = await mySQLQuery(await queryGetUser_sns(kakaoUser.kakao_account.email, apiName));
+
+        // 카카오, 네이버 변수
+        if (login_sns_type === 'K') {
+            email = snsUser.kakao_account.email;
+            nickname = snsUser.kakao_account.nickname;
+            profile_image = snsUser.kakao_account.profile_image;
+        } else {
+            email = snsUser.response.email
+            nickname = snsUser.response.name // 닉네임대신 이름이로 설정
+            profile_image = snsUser.response.profile_image
+        }
+
+        // 객체 재정의 (형식 통일시킴)
+        snsUser = {
+            email: email,
+            nickname: nickname,
+            profile_image: profile_image,
+            snsRefreshToken: snsRefreshToken,
+            login_sns_type: login_sns_type
+        }
+
+        const res = await mySQLQuery(await queryGetUser_sns(snsUser.email, apiName));
         logger.debug({
             API: apiName,
             res_length: res.length
         });
 
         if (res.length === 0) {
-            await mySQLQuery(await insertSnsUser(kakaoUser, 'K', kakaoRefreshToken, apiName));
+            await mySQLQuery(await insertSnsUser(snsUser, login_sns_type, snsRefreshToken, apiName));
             logger.debug({
                 API: apiName,
                 if: '0명이라면 회원가입',
@@ -686,7 +787,7 @@ async function processLoginOrRegister(kakaoUser, kakaoRefreshToken, apiName) {
             });
 
         } else { // 테스트 후 수정하기
-            await mySQLQuery(await updateSnsRefreshToken(kakaoRefreshToken, kakaoUser.kakao_account.email, apiName));
+            await mySQLQuery(await updateSnsRefreshToken(snsRefreshToken, snsUser.email, apiName));
             // 로그아웃 이후 리프레시토큰이 없기 때문에 로그인(회원가입X)할 때 리프래시토큰 저장시켜주기
             logger.debug({
                 API: apiName,
@@ -704,7 +805,7 @@ async function processLoginOrRegister(kakaoUser, kakaoRefreshToken, apiName) {
 }
 
 // SNS 회원가입 쿼리문 작성
-async function insertSnsUser(kakaoUser, login_sns_type, refresh_token, apiName) {
+async function insertSnsUser(snsUser, login_sns_type, refresh_token, apiName) {
     logger.debug({
         API: apiName+ '쿼리문 작성',
         function: 'insertSnsUser()',
@@ -714,10 +815,10 @@ async function insertSnsUser(kakaoUser, login_sns_type, refresh_token, apiName) 
                 (user_email, user_state, user_name, login_sns_type, user_prof_img, refresh_token, create_at) 
                 VALUES (?, 'N', ?, ?, ?, ?, now())`,
         params: [
-            kakaoUser.kakao_account.email,
-            kakaoUser.properties.nickname,
+            snsUser.email,
+            snsUser.nickname,
             login_sns_type,
-            kakaoUser.properties.profile_image,
+            snsUser.profile_image,
             refresh_token,
         ],
     };
@@ -734,7 +835,7 @@ async function updateSnsRefreshToken(refresh_token, email, apiName) {
                 SET refresh_token = ?
                 WHERE user_email = ?`, 
         params: [
-            refresh_token ,email
+            refresh_token, email
         ] 
     };
 }
@@ -812,7 +913,7 @@ function queryGetUser(query, apiName) {
 }
 
 // sns 간편로그인 쿼리문
-function queryGetUser_sns(emai, apiName) {
+function queryGetUser_sns(email, apiName) {
     logger.debug({
         API: apiName+' 쿼리문 작성',
         email: email,

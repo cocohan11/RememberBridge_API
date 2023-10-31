@@ -209,6 +209,9 @@ router.post('/join/sns', async (req, res) => {
             API: apiName,
             user: user
         });
+        if (user === 9999) return resCode.returnResponseCode(res, 9999, apiName, null, null);
+
+
         // 동기적으로 실행하고 싶은 코드
         const tokens = await userMngDB.signJWT(user);
         logger.info({
@@ -221,7 +224,11 @@ router.post('/join/sns', async (req, res) => {
                 refresh_token: tokens.refreshToken,
                 userInfo: user,
             };
-            return resCode.returnResponseCode(res, 2000, apiName, 'addToResult' + plusResult);
+            logger.info({
+                API: apiName,
+                plusResultisthat: plusResult
+            });
+            return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
         } else {
             return resCode.returnResponseCode(res, 9999, apiName, null, null);
         }
