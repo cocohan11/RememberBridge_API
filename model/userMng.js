@@ -705,18 +705,22 @@ async function joinKakao(query, apiName) {
     });
 
     // 카카오 유저 정보를 받아온다
-    const { data: kakaoUser } = await axios('https://kapi.kakao.com/v2/user/me', {
+    const kakao = await axios('https://kapi.kakao.com/v2/user/me', {
         headers: {
             Authorization: `Bearer ${kakaoAccessToken}`,
         },
     });
+
+    // 사용할 카카오 유저 정보
+    kakaoUser = {
+        nickname : kakao.data.properties.nickname,
+        profile_image : kakao.data.properties.profile_image,
+        email : kakao.data.kakao_account.email,
+    }
     
     logger.debug({
         API: apiName,
-        kakaoUser: kakaoUser,
-        nickname: kakaoUser.properties.nickname,
-        profile_image: kakaoUser.properties.profile_image,
-        email: kakaoUser.properties.email,
+        kakaoUser
     });
 
     // 카카오 회원정보없으면 DB에 회원추가하기
@@ -730,7 +734,7 @@ async function joinKakao(query, apiName) {
 
     // 응답값
     return new Promise((resolve, reject) => {
-        mySQLQuery(queryGetUser_sns(kakaoUser.kakao_account.email, apiName)) // 쿼리문 실행
+        mySQLQuery(queryGetUser_sns(kakaoUser.email, apiName)) // 쿼리문 실행
             .then(async (res) => {
                 logger.debug({
                     API: apiName,
@@ -754,9 +758,9 @@ async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, 
 
         // 카카오, 네이버 변수
         if (login_sns_type === 'K') {
-            email = snsUser.kakao_account.email;
-            nickname = snsUser.kakao_account.nickname;
-            profile_image = snsUser.kakao_account.profile_image;
+            email = snsUser.email;
+            nickname = snsUser.nickname;
+            profile_image = snsUser.profile_image;
         } else {
             email = snsUser.response.email
             nickname = snsUser.response.name // 닉네임대신 이름이로 설정
@@ -772,9 +776,15 @@ async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, 
             login_sns_type: login_sns_type
         }
 
+        logger.debug({
+            APIthat: apiName,
+            snsUser
+        });
+
         const res = await mySQLQuery(await queryGetUser_sns(snsUser.email, apiName));
         logger.debug({
             API: apiName,
+            rescheck: res,
             res_length: res.length
         });
 
@@ -795,6 +805,7 @@ async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, 
                 function: 'updateSnsRefreshToken()',
             });
         }
+        return res;
 
     } catch (err) {
         logger.error({
