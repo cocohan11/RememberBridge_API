@@ -187,7 +187,61 @@ router.post('/logout/sns', async (req, res) => {
     }
 });
 
-/** SNS 회원가입(카카오, 네이버) API */
+/** SNS 로그인/회원가입(구글) API */
+router.post('/join/sns/google', async (req, res) => {
+    // API 정보
+    const apiName = '로그인/회원가입(구글) API';
+    logger.http({
+        API: apiName,
+        reqBody: req.body
+    });
+
+
+    // 파라미터값 누락 확인
+    if (!req.body.user_id || !req.body.user_email|| !req.body.user_name|| !req.body.user_profile|| !req.body.login_sns_type) { // user_id: 구글 id
+        return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    }
+
+    try {
+        // DB에 SNS 회원가입 정보 추가
+        const user = await userMngDB.addSnsUser(req.body, apiName);
+        logger.info({
+            API: apiName,
+            user: user
+        });
+        if (user === 9999) return resCode.returnResponseCode(res, 9999, apiName, null, null);
+
+
+        // 동기적으로 실행하고 싶은 코드
+        const tokens = await userMngDB.signJWT(user);
+        logger.info({
+            API: apiName,
+            tokens: tokens
+        });
+        if (tokens) {
+            const plusResult = {
+                access_token: tokens.accessToken,
+                refresh_token: tokens.refreshToken,
+                userInfo: user,
+            };
+            logger.info({
+                API: apiName,
+                plusResultisthat: plusResult
+            });
+            return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
+        } else {
+            return resCode.returnResponseCode(res, 9999, apiName, null, null);
+        }
+    } catch (error) {
+        logger.error({
+            API: apiName,
+            error: error
+        });
+        return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    }
+});
+
+/** SNS 로그인/회원가입(카카오, 네이버) API */
 router.post('/join/sns', async (req, res) => {
     // API 정보
     const apiName = 'SNS 회원가입/로그인 API';

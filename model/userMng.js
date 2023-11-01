@@ -334,10 +334,13 @@ userMng.prototype.addSnsUser = async (query, apiName) => {
     if (query.login_sns_type === 'K') {
         result = await joinKakao(query, apiName);
 
-    // 네이버
+        // 네이버
     } else if (query.login_sns_type === 'N') {
         result = await joinNaver(query, apiName);
     
+    } else if (query.login_sns_type === 'G') {
+        result = await joinGoogle(query, apiName);
+
     } else { return 9999; }
 
     return result;
@@ -613,6 +616,39 @@ async function RenewalKakaoToken(refresh_token, apiName) {
     return kakaoAccessToken;
 }
 
+// 구글 회원가입
+async function joinGoogle(GoogleUser, apiName) {
+
+    // 구글 회원정보 없으면 DB에 회원추가하기 / 로그인
+    // 구글 회원정보 있으면 로그인
+    const result = await googleLoginOrRegister(GoogleUser, apiName);
+    logger.debug(`result processLoginOrRegister : ${result} `);
+    logger.debug({
+        API: apiName,
+        result: result,
+        function: 'processLoginOrRegister()'
+    });
+
+    // 응답값
+    return new Promise((resolve, reject) => {
+        mySQLQuery(queryGetUser_sns(GoogleUser.user_email, apiName)) // 쿼리문 실행
+            .then(async (res) => {
+                logger.debug({
+                    API: apiName,
+                    res_length: res.length
+                });
+                return resolve(selectUserInfo(res[res.length - 1]));
+            })
+            .catch((err) => {
+                logger.error({
+                    API: apiName,
+                    error: err
+                });
+                return resolve(9999);
+            });
+    });
+}
+
 // 네이버 토큰발급, 유저정보조회
 async function joinNaver(query, apiName) {
     // 네이버 토큰을 받아온다
@@ -753,6 +789,36 @@ async function joinKakao(query, apiName) {
 }
 
 // 이메일 중복확인 후 DB에 회원정보없으면 회원가입하기
+async function googleLoginOrRegister(snsUser, apiName) {
+    try {
+
+        const res = await mySQLQuery(await queryGetUser_sns(snsUser.user_email, apiName));
+        logger.debug({
+            API: apiName,
+            rescheck: res,
+            res_length: res.length
+        });
+
+        if (res.length === 0) {
+            await mySQLQuery(await insertSnsUser(snsUser, apiName));
+            logger.debug({
+                API: apiName,
+                if: '0명이라면 회원가입',
+                function: 'insertSnsUser()',
+            });
+
+        } 
+        return res;
+
+    } catch (err) {
+        logger.error({
+            API: apiName,
+            error: err
+        });
+    }
+}
+
+// 이메일 중복확인 후 DB에 회원정보없으면 회원가입하기
 async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, apiName) {
     try {
 
@@ -816,7 +882,7 @@ async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, 
 }
 
 // SNS 회원가입 쿼리문 작성
-async function insertSnsUser(snsUser, login_sns_type, refresh_token, apiName) {
+async function insertSnsUserForGoogle(snsUser, apiName) {
     logger.debug({
         API: apiName+ '쿼리문 작성',
         function: 'insertSnsUser()',
@@ -832,6 +898,20 @@ async function insertSnsUser(snsUser, login_sns_type, refresh_token, apiName) {
             snsUser.profile_image,
             refresh_token,
         ],
+    };
+}
+
+// SNS 회원가입 쿼리문 작성 (카카오, 네이버)
+async function insertSnsUser(snsUser, apiName) {
+    logger.debug({
+        API: apiName+ '쿼리문 작성',
+        function: 'insertSnsUser()',
+    });
+    return {
+        text: `INSERT INTO USER 
+                (user_email, sns_id, user_state, user_name, user_prof_img, login_sns_type, create_at) 
+                VALUES (?, ?, 'N', ?, ?, ?, now())`,
+        params: [snsUser.user_email, snsUser.user_id, snsUser.user_name, snsUser.user_profile, snsUser.login_sns_type],
     };
 }
 
