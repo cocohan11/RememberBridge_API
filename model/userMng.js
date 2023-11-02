@@ -787,7 +787,7 @@ async function leaveNaver(query, refresh_token, apiName) {
     return data.data.result
 }
 
-// 카카오 로그아웃
+// 카카오 회원탈퇴
 async function leaveKakao(query, refresh_token, apiName) {
 
     // 액세스토큰 갱신하기
@@ -820,6 +820,41 @@ async function leaveKakao(query, refresh_token, apiName) {
         });
     }
     return kakaoId;
+}
+
+// 카카오 로그아웃
+async function logoutKakao(query, refresh_token, apiName) {
+
+    // 토큰 갱신
+    const kakaoAccessToken = await RenewalKakaoToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
+    logger.debug({
+        API: apiName,
+        kakaoAccessToken: kakaoAccessToken, 
+    });
+
+
+    // 토큰으로 로그아웃
+    const {
+        data: { id: kakaoId },
+    } = await axios('https://kapi.kakao.com/v1/user/logout', {
+        headers: {
+            Authorization: `Bearer ${kakaoAccessToken}`,
+        },
+    });
+    logger.debug({
+        API: apiName,
+        kakaoId: kakaoId, 
+    });
+
+    // DB에서 리프레시토큰 삭제
+    if (kakaoId) {
+        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email, apiName));
+        logger.debug({
+            API: apiName,
+            result: result, 
+        });
+    }
+    return kakaoId
 }
 
 
