@@ -116,6 +116,39 @@ router.get('/info/:user_email?', async (req, res) => {
 })
 
 
+/** SNS 회원탈퇴(구글) API */
+router.post('/leave/sns/google', async (req, res) => {
+    // 로그인 중인 상태에서 요청이 들어옴
+
+    // API 정보
+    const apiName = '일반회원탈퇴 API';
+    logger.http({
+        API: apiName,
+        reqBody: req.body
+    });
+
+
+    // 파라미터값 누락 확인
+    if (!req.body.user_email) {
+        return resCode.returnResponseCode(res, 1002, apiName, null, null); //
+    }
+
+    // DB
+    const result = await userMngDB.leaveUser(req.body, apiName);
+    logger.info({
+        API: apiName,
+        result: result
+    });
+    // response
+    if (result == 9999) {
+        return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    } else if (result == 1005) {
+        return resCode.returnResponseCode(res, 1005, apiName, null, null); // O
+    } else {
+        resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳
+    }
+});
+
 /** SNS 회원탈퇴(카카오, 네이버) API */
 router.post('/leave/sns', async (req, res) => {
     // API 정보

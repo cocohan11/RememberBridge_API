@@ -255,7 +255,7 @@ userMng.prototype.leaveSns = async (query, apiName) => { // 이메일, sns type
         kakaoId: kakaoId, // 숫자리턴
     });
 
-    // DB에서 리프레시토큰 삭제
+    // DB에서 유저 삭제
     if (kakaoId) {
         const result = await mySQLQuery(await leaveUser(query, apiName));
         logger.debug({
