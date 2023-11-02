@@ -293,6 +293,7 @@ userMng.prototype.logoutSns = async (query, apiName) => {
 
     // 네이버
     } else if (query.login_sns_type === 'N') {
+        snsId = await logoutNaver(query, refresh_token, apiName);
     
     } else { return 9999; }
 
@@ -562,6 +563,39 @@ async function leaveUser(query, apiName) {
     };
 }
 
+// 네이버 토큰 갱신
+async function RenewalNaverToken(refresh_token, apiName) {
+    // 네이버 토큰을 받아온다
+    const {
+        data: {
+            access_token: naverAccessToken,
+            refresh_token: naverRefreshToken,
+            expires_in: naverAccessTokenExpires,
+            token_type: naverRefreshTokenExpires,
+        },
+    } = await axios('https://nid.naver.com/oauth2.0/token', {
+        params: {
+            grant_type: 'refresh_token',
+            client_id: NAVER_API_KEY, 
+            refresh_token: refresh_token, // 파라미터 변수로 수정하기
+            client_secret: NAVER_SECRET_KEY,
+        },
+    });
+    logger.debug({
+        API: apiName,
+        refresh_token: refresh_token,
+        naverAccessToken: naverAccessToken,
+        naverRefreshToken: naverRefreshToken,
+        naverAccessTokenExpires: naverAccessTokenExpires,  // 리프레시 토큰은 1달 남았을 경우만 갱신됨
+        naverRefreshTokenExpires: naverRefreshTokenExpires,
+    });
+
+    // TODO
+    // 만약 리프레시토큰이 undefined가 아니라 값을 응답받으면
+    // DB에 update해주기
+    return naverAccessToken;
+}
+
 // 카카오 토큰 갱신
 async function RenewalKakaoToken(refresh_token, apiName) {
     // 카카오 토큰을 받아온다
@@ -698,6 +732,40 @@ async function joinNaver(query, apiName) {
     });
 }
 
+// 네이버 로그아웃/회원탈퇴
+async function logoutNaver(query, refresh_token, apiName) {
+
+    // 토큰 갱신
+    const naverAccessToken = await RenewalNaverToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
+    logger.debug({
+        API: apiName,
+        naverAccessToken: naverAccessToken, 
+    });
+
+
+    // 토큰으로 로그아웃
+    const {
+        data: { id: naverId },
+    } = await axios('https://nid.naver.com/oauth2.0/token', {
+        headers: {
+            Authorization: `Bearer ${naverAccessToken}`,
+        },
+    });
+    logger.debug({
+        API: apiName,
+        naverId: naverId, 
+    });
+
+    // DB에서 리프레시토큰 삭제
+    if (naverId) {
+        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email, apiName));
+        logger.debug({
+            API: apiName,
+            result: result, 
+        });
+    }
+    return naverId
+}
 
 // 카카오 로그아웃
 async function logoutKakao(query, refresh_token, apiName) {
@@ -817,7 +885,7 @@ async function googleLoginOrRegister(snsUser, apiName) {
         });
 
         if (res.length === 0) {
-            await mySQLQuery(await insertSnsUser(snsUser, apiName));
+            await mySQLQuery(await insertSnsUserForGoogle(snsUser, apiName));
             logger.debug({
                 API: apiName,
                 if: '0명이라면 회원가입',
@@ -906,14 +974,14 @@ async function insertSnsUserForGoogle(snsUser, apiName) {
     });
     return {
         text: `INSERT INTO USER 
-                (user_email, user_state, user_name, login_sns_type, user_prof_img, refresh_token, create_at) 
-                VALUES (?, 'N', ?, ?, ?, ?, now())`,
+                (user_email, sns_id, user_state, user_name, login_sns_type, user_prof_img, create_at) 
+                VALUES (?, ?, 'N', ?, ?, ?, now())`,
         params: [
-            snsUser.email,
-            snsUser.nickname,
-            login_sns_type,
-            snsUser.profile_image,
-            snsUser.refresh_token,
+            snsUser.user_email,
+            snsUser.user_id,
+            snsUser.user_name,
+            snsUser.login_sns_type,
+            snsUser.user_profile,
         ],
     };
 }
