@@ -183,7 +183,7 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId, apiName) => {
     like = true;
   }
 
-  // 2. emotion, diary_content
+  // 2. emotion, diary_content, select_date
   let emotionAndContent = await mySQLQuery(
     await selectDiaryEmotionAndContent(diaryId, apiName)
   );
@@ -206,6 +206,7 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId, apiName) => {
     like: like,
     emotion: emotionAndContent[0].emotion,
     diary_content: emotionAndContent[0].diary_content,
+    select_date: emotionAndContent[0].select_date,
     writer: writer[0].writer,
   };
   logger.debug({
@@ -1130,7 +1131,7 @@ async function selectDiaryEmotionAndContent(diaryId, apiName) {
   });
 
   return {
-    text: `SELECT emotion, diary_content 
+    text: `SELECT emotion, diary_content, DATE_FORMAT(select_date, '%Y-%m-%d') AS select_date 
                 FROM DIARY 
                 WHERE diary_id = ?;
         `,
