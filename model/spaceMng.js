@@ -177,7 +177,11 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId, apiName) => {
     API: apiName,
     like: like,
   });
-  if (like.length == 0) like = false;
+  if (like.length == 0) {
+    like = false;
+  } else {
+    like = true;
+  }
 
   // 2. emotion, diary_content
   let emotionAndContent = await mySQLQuery(
