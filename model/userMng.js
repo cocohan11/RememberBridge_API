@@ -221,10 +221,13 @@ userMng.prototype.signJWT = (userInfo, apiName) => {
  * 회원탈퇴하면 카카오에서 로그아웃도 같이 진행시킨다.(==토큰만료) 
 */
 userMng.prototype.leaveSns = async (query, apiName) => { // 이메일, sns type
+    
+    
     logger.debug({
         API: apiName,
         params: query,
     });
+
     // DB에서 리프레시토큰 조회하기
     const refresh_token_response = await mySQLQuery(queryGetRefreshToken(query.user_email, apiName));
     const refresh_token = refresh_token_response[0].refresh_token; // 토큰만 추출
@@ -232,38 +235,19 @@ userMng.prototype.leaveSns = async (query, apiName) => { // 이메일, sns type
         API: apiName,
         refresh_token: refresh_token,
     });
-    // TODO
-    // 카카오인지 네이버인지 구분하기
 
-    // 액세스토큰 갱신하기
-    const kakaoAccessToken = await RenewalKakaoToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
-    logger.debug({
-        API: apiName,
-        kakaoAccessToken: kakaoAccessToken,
-    });
 
-    // 카카오 회원탈퇴 요청
-    const {
-        data: { id: kakaoId },
-    } = await axios('	https://kapi.kakao.com/v1/user/unlink', {
-        headers: {
-            Authorization: `Bearer ${kakaoAccessToken}`,
-        },
-    });
-    logger.debug({
-        API: apiName,
-        kakaoId: kakaoId, // 숫자리턴
-    });
+    // 카카오
+    if (query.login_sns_type === 'K') {
+        snsId = await leaveKakao(query, refresh_token, apiName);
 
-    // DB에서 리프레시토큰 삭제
-    if (kakaoId) {
-        const result = await mySQLQuery(await leaveUser(query, apiName));
-        logger.debug({
-            API: apiName,
-            result: result, // 숫자리턴
-        });
-    }
-    return kakaoId;
+    // 네이버
+    } else if (query.login_sns_type === 'N') {
+        snsId = await leaveNaver(query, refresh_token, apiName);
+    
+    } else { return 9999; }
+    
+    return snsId;
 };
 
 /** SNS 로그아웃 (카카오/네이버)
@@ -290,11 +274,6 @@ userMng.prototype.logoutSns = async (query, apiName) => {
     // 카카오
     if (query.login_sns_type === 'K') {
         snsId = await logoutKakao(query, refresh_token, apiName);
-
-    // 네이버
-    } else if (query.login_sns_type === 'N') {
-        snsId = await logoutNaver(query, refresh_token, apiName);
-    
     } else { return 9999; }
 
 
@@ -732,8 +711,8 @@ async function joinNaver(query, apiName) {
     });
 }
 
-// 네이버 로그아웃/회원탈퇴
-async function logoutNaver(query, refresh_token, apiName) {
+// 네이버 회원탈퇴
+async function leaveNaver(query, refresh_token, apiName) {
 
     // 토큰 갱신
     const naverAccessToken = await RenewalNaverToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
@@ -743,7 +722,7 @@ async function logoutNaver(query, refresh_token, apiName) {
     });
 
 
-    // 토큰으로 로그아웃
+    // 토큰으로 회원탈퇴
     const data = await axios('https://nid.naver.com/oauth2.0/token', {
         params: {
             grant_type: 'delete',  
@@ -762,50 +741,51 @@ async function logoutNaver(query, refresh_token, apiName) {
         // }); -> JSON형식에 로거로하면 에러남
         // 에러메세지 : "Converting circular structure to JSON\n"
     
-    // DB에서 리프레시토큰 삭제
+    
+    // DB 유저 삭제
     if (data.data.result === 'success') {
-        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email, apiName));
+        const result = await mySQLQuery(await leaveUser(query, apiName));
         logger.debug({
             API: apiName,
-            result: result, 
+            result: result, // 숫자리턴
         });
     }
     return data.data.result
 }
 
 // 카카오 로그아웃
-async function logoutKakao(query, refresh_token, apiName) {
+async function leaveKakao(query, refresh_token, apiName) {
 
-    // 토큰 갱신
+    // 액세스토큰 갱신하기
     const kakaoAccessToken = await RenewalKakaoToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
     logger.debug({
         API: apiName,
-        kakaoAccessToken: kakaoAccessToken, 
+        kakaoAccessToken: kakaoAccessToken,
     });
 
 
-    // 토큰으로 로그아웃
+    // 카카오 회원탈퇴 요청
     const {
         data: { id: kakaoId },
-    } = await axios('https://kapi.kakao.com/v1/user/logout', {
+    } = await axios('	https://kapi.kakao.com/v1/user/unlink', {
         headers: {
             Authorization: `Bearer ${kakaoAccessToken}`,
         },
     });
     logger.debug({
         API: apiName,
-        kakaoId: kakaoId, 
+        kakaoId: kakaoId, // 숫자리턴
     });
 
-    // DB에서 리프레시토큰 삭제
+    // DB 유저 삭제
     if (kakaoId) {
-        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email, apiName));
+        const result = await mySQLQuery(await leaveUser(query, apiName));
         logger.debug({
             API: apiName,
-            result: result, 
+            result: result, // 숫자리턴
         });
     }
-    return kakaoId
+    return kakaoId;
 }
 
 
