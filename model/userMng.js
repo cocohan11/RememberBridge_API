@@ -819,7 +819,7 @@ async function googleLoginOrRegister(snsUser, apiName) {
 }
 
 // 이메일 중복확인 후 DB에 회원정보없으면 회원가입하기
-async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, apiName) {
+async function processLoginOrRegister(snsUser, refresh_token, login_sns_type, apiName) {
     try {
 
         // 카카오, 네이버 변수
@@ -838,7 +838,7 @@ async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, 
             email: email,
             nickname: nickname,
             profile_image: profile_image,
-            snsRefreshToken: snsRefreshToken,
+            refresh_token: refresh_token,
             login_sns_type: login_sns_type
         }
 
@@ -855,7 +855,7 @@ async function processLoginOrRegister(snsUser, snsRefreshToken, login_sns_type, 
         });
 
         if (res.length === 0) {
-            await mySQLQuery(await insertSnsUser(snsUser, login_sns_type, snsRefreshToken, apiName));
+            await mySQLQuery(await insertSnsUser(snsUser, login_sns_type, refresh_token, apiName));
             logger.debug({
                 API: apiName,
                 if: '0명이라면 회원가입',
@@ -896,7 +896,7 @@ async function insertSnsUserForGoogle(snsUser, apiName) {
             snsUser.nickname,
             login_sns_type,
             snsUser.profile_image,
-            refresh_token,
+            snsUser.refresh_token,
         ],
     };
 }
@@ -905,13 +905,14 @@ async function insertSnsUserForGoogle(snsUser, apiName) {
 async function insertSnsUser(snsUser, apiName) {
     logger.debug({
         API: apiName+ '쿼리문 작성',
+        snsUsercheck: snsUser,
         function: 'insertSnsUser()',
     });
     return {
         text: `INSERT INTO USER 
-                (user_email, sns_id, user_state, user_name, user_prof_img, login_sns_type, create_at) 
-                VALUES (?, ?, 'N', ?, ?, ?, now())`,
-        params: [snsUser.email, snsUser.user_id, snsUser.nickname, snsUser.profile_image, snsUser.login_sns_type],
+                (user_email, sns_id, user_state, user_name, user_prof_img, login_sns_type, refresh_token, create_at) 
+                VALUES (?, ?, 'N', ?, ?, ?, ?, now())`,
+        params: [snsUser.email, snsUser.user_id, snsUser.nickname, snsUser.profile_image, snsUser.login_sns_type, snsUser.refresh_token],
     };
 }
 
