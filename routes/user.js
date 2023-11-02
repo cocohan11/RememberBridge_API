@@ -134,7 +134,7 @@ router.post('/leave/sns/google', async (req, res) => {
     }
 
     // DB
-    const result = await userMngDB.leaveUser(req.body, apiName);
+    const result = await userMngDB.leaveUserForGoogle(req.body, apiName);
     logger.info({
         API: apiName,
         result: result

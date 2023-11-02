@@ -213,6 +213,34 @@ userMng.prototype.signJWT = (userInfo, apiName) => {
     }
 };
 
+/** SNS 회원탈퇴 (구글)*/
+userMng.prototype.leaveUserForGoogle = (query, apiName) => { // 논리삭제 (물리삭제X)
+    logger.debug({
+        API: apiName,
+        params: query, 
+    });
+
+    // 회원탈퇴 쿼리문 날리기
+    return new Promise(async (resolve, reject) => {
+        mySQLQuery(await leaveUser(query, apiName)) // 쿼리문 실행 
+            .then(async (res) => { 
+                logger.debug({
+                    API: apiName,
+                    res: res, 
+                });
+                if (res.affectedRows >= 1) return resolve(2000);
+                if (res.affectedRows < 1) return resolve(1005); // 테스트이후 수정하기
+        })
+        .catch((err) => {
+            logger.error({
+                API: apiName,
+                error: err
+            });
+            return resolve(9999); 
+        });
+    }); 
+}
+
 /** SNS 회원탈퇴 (카카오/네이버)
  * 1. DB에서 리프레시토큰 조회
  * 2. 액세스토큰 갱신
@@ -306,7 +334,7 @@ userMng.prototype.addSnsUser = async (query, apiName) => {
     return result;
 };
 
-/** 회원탈퇴 (일반, SNS 유저 포함)*/
+/** 회원탈퇴 (일반)*/
 userMng.prototype.leaveUser = (query, apiName) => { // 논리삭제 (물리삭제X)
     
     
