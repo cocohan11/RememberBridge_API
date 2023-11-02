@@ -863,7 +863,7 @@ async function processLoginOrRegister(snsUser, refresh_token, login_sns_type, ap
             });
 
         } else { // 테스트 후 수정하기
-            await mySQLQuery(await updateSnsRefreshToken(snsRefreshToken, snsUser.email, apiName));
+            await mySQLQuery(await updateSnsRefreshToken(refresh_token, snsUser.email, apiName));
             // 로그아웃 이후 리프레시토큰이 없기 때문에 로그인(회원가입X)할 때 리프래시토큰 저장시켜주기
             logger.debug({
                 API: apiName,
