@@ -308,30 +308,64 @@ userMng.prototype.addSnsUser = async (query, apiName) => {
 
 /** 회원탈퇴 (일반, SNS 유저 포함)*/
 userMng.prototype.leaveUser = (query, apiName) => { // 논리삭제 (물리삭제X)
+    
+    
     logger.debug({
         API: apiName,
         params: query, 
     });
 
-    // 회원탈퇴 쿼리문 날리기
-    return new Promise(async (resolve, reject) => {
-        mySQLQuery(await leaveUser(query, apiName)) // 쿼리문 실행 
+
+    // 비밀번호 일치하는지 확인하기
+    // 비밀번호 복호화
+    async function matchHashPassword(pw, pwfromDB) {
+        const isMatch = await bcrypt.compare(pw, pwfromDB);
+        logger.debug({
+            API: apiName,
+            pw: pw, 
+            pwfromDB: pwfromDB, 
+            isMatch: isMatch, 
+        });
+        return isMatch;
+    }
+
+    // 일반회원 로그인 쿼리문 날리기
+    return new Promise((resolve, reject) => {
+        mySQLQuery(queryGetUser(query, apiName)) // 쿼리문 실행 
             .then(async (res) => { 
                 logger.debug({
                     API: apiName,
-                    res: res, 
+                    query_user_pw: query.user_pw, 
                 });
-                if (res.affectedRows >= 1) return resolve(2000);
-                if (res.affectedRows < 1) return resolve(1005); // 테스트이후 수정하기
-        })
-        .catch((err) => {
-            logger.error({
-                API: apiName,
-                error: err
+
+
+                isMatch = await matchHashPassword(query.user_pw, res[res.length-1].user_pw); // 임시) 해당이멜로조회된 제일 최신 user를 리턴한다.
+                
+
+                logger.debug({
+                    API: apiName,
+                    'res[0].user_pw': res[res.length - 1].user_pw, 
+                    isMatch: isMatch,
+                });
+                if (isMatch == false) return resolve(2009); 
+                if (isMatch == true) result = await mySQLQuery(await leaveUser(query, apiName));
+                logger.debug({
+                    APIcheck: apiName,
+                    result: result, 
+                });
+                if (result.affectedRows >= 1) return resolve(2000);
+                if (result.affectedRows < 1) return resolve(1005); // 테스트이후 수정하기
+
+
+            })
+            .catch((err) => {
+                logger.error({
+                    API: apiName,
+                    error: err
+                });
+                return resolve(9999);
             });
-            return resolve(9999); 
-        });
-    }); 
+    });
 }
 
 /** 비밀번호 임시발급

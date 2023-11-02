@@ -329,7 +329,7 @@ router.post('/join/sns', async (req, res) => {
 });
 
 /** 일반회원탈퇴 API */
-router.use('/leave', userMngDB.authMiddleware);
+// router.use('/leave', userMngDB.authMiddleware);
 router.post('/leave', async (req, res) => {
     // 로그인 중인 상태에서 요청이 들어옴
 
@@ -342,7 +342,7 @@ router.post('/leave', async (req, res) => {
 
 
     // 파라미터값 누락 확인
-    if (!req.body.user_email) {
+    if (!req.body.user_email || !req.body.user_pw) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null); //
     }
 
@@ -353,13 +353,7 @@ router.post('/leave', async (req, res) => {
         result: result
     });
     // response
-    if (result == 9999) {
-        return resCode.returnResponseCode(res, 9999, apiName, null, null);
-    } else if (result == 1005) {
-        return resCode.returnResponseCode(res, 1005, apiName, null, null); // O
-    } else {
-        resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳
-    }
+    resCode.returnResponseCode(res, result, apiName, null, null); // 성공시 응답받는 곳
 });
 
 /** (비로그인) 비밀번호 임시발급 API */
