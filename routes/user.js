@@ -303,7 +303,7 @@ router.post('/leave', async (req, res) => {
     // API 정보
     const apiName = '일반회원탈퇴 API';
     logger.http({
-        'API': apiName,
+        API: apiName,
         reqBody: req.body
     });
 

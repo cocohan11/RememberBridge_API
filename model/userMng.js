@@ -911,7 +911,7 @@ async function insertSnsUser(snsUser, apiName) {
         text: `INSERT INTO USER 
                 (user_email, sns_id, user_state, user_name, user_prof_img, login_sns_type, create_at) 
                 VALUES (?, ?, 'N', ?, ?, ?, now())`,
-        params: [snsUser.user_email, snsUser.user_id, snsUser.user_name, snsUser.user_profile, snsUser.login_sns_type],
+        params: [snsUser.email, snsUser.user_id, snsUser.nickname, snsUser.profile_image, snsUser.login_sns_type],
     };
 }
 
