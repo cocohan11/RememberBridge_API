@@ -132,12 +132,12 @@ router.post('/leave/sns', async (req, res) => {
 
     try {
         // DB에 SNS 회원가입 정보 추가
-        const kakaoId = await userMngDB.leaveSns(req.body, apiName);
+        const snsId = await userMngDB.leaveSns(req.body, apiName);
         logger.info({
             API: apiName,
-            kakaoId: kakaoId
+            snsId: snsId
         }); 
-        if (kakaoId) {
+        if (snsId) {
             return resCode.returnResponseCode(res, 2000, apiName, null, null);
         } else {
             return resCode.returnResponseCode(res, 9999, apiName, null, null);
@@ -168,12 +168,12 @@ router.post('/logout/sns', async (req, res) => {
 
     try {
         // DB에 SNS 회원가입 정보 추가
-        const kakaoId = await userMngDB.logoutSns(req.body, apiName);
+        const snsId = await userMngDB.logoutSns(req.body, apiName);
         logger.info({
             API: apiName,
-            kakaoId: kakaoId
+            snsId: snsId
         });
-        if (kakaoId) {
+        if (snsId) {
             return resCode.returnResponseCode(res, 2000, apiName, null, null);
         } else {
             return resCode.returnResponseCode(res, 9999, apiName, null, null);

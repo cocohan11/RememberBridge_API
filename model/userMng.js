@@ -286,38 +286,18 @@ userMng.prototype.logoutSns = async (query, apiName) => {
     // DB에 리프레시토큰도 없다면 리프레시토큰 재발급받기
 
 
-    // TODO
-    // 카카오인지 네이버인지 구분하기
-
     // 액세스토큰 갱신하기
-    const kakaoAccessToken = await RenewalKakaoToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
-    logger.debug({
-        API: apiName,
-        kakaoAccessToken: kakaoAccessToken, 
-    });
+    // 카카오
+    if (query.login_sns_type === 'K') {
+        snsId = await logoutKakao(query, refresh_token, apiName);
 
-    // 카카오 로그아웃 요청
-    const {
-        data: { id: kakaoId },
-    } = await axios('https://kapi.kakao.com/v1/user/logout', {
-        headers: {
-            Authorization: `Bearer ${kakaoAccessToken}`,
-        },
-    });
-    logger.debug({
-        API: apiName,
-        kakaoId: kakaoId, 
-    });
+    // 네이버
+    } else if (query.login_sns_type === 'N') {
+    
+    } else { return 9999; }
 
-    // DB에서 리프레시토큰 삭제
-    if (kakaoId) {
-        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email, apiName));
-        logger.debug({
-            API: apiName,
-            result: result, 
-        });
-    }
-    return kakaoId;
+
+    return snsId;
 };
 
 /** SNS 회원가입 (카카오/네이버)
@@ -717,6 +697,43 @@ async function joinNaver(query, apiName) {
             });
     });
 }
+
+
+// 카카오 로그아웃
+async function logoutKakao(query, refresh_token, apiName) {
+
+    // 토큰 갱신
+    const kakaoAccessToken = await RenewalKakaoToken(refresh_token, apiName); // 카카오에 로그아웃 요청할 때 필요한 액세스토큰 갱신
+    logger.debug({
+        API: apiName,
+        kakaoAccessToken: kakaoAccessToken, 
+    });
+
+
+    // 토큰으로 로그아웃
+    const {
+        data: { id: kakaoId },
+    } = await axios('https://kapi.kakao.com/v1/user/logout', {
+        headers: {
+            Authorization: `Bearer ${kakaoAccessToken}`,
+        },
+    });
+    logger.debug({
+        API: apiName,
+        kakaoId: kakaoId, 
+    });
+
+    // DB에서 리프레시토큰 삭제
+    if (kakaoId) {
+        const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email, apiName));
+        logger.debug({
+            API: apiName,
+            result: result, 
+        });
+    }
+    return kakaoId
+}
+
 
 // 카카오 토큰발급, 유저정보조회
 async function joinKakao(query, apiName) {
