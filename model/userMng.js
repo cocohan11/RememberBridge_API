@@ -255,7 +255,7 @@ userMng.prototype.leaveSns = async (query, apiName) => { // 이메일, sns type
         kakaoId: kakaoId, // 숫자리턴
     });
 
-    // DB에서 유저 삭제
+    // DB에서 리프레시토큰 삭제
     if (kakaoId) {
         const result = await mySQLQuery(await leaveUser(query, apiName));
         logger.debug({
@@ -744,27 +744,33 @@ async function logoutNaver(query, refresh_token, apiName) {
 
 
     // 토큰으로 로그아웃
-    const {
-        data: { id: naverId },
-    } = await axios('https://nid.naver.com/oauth2.0/token', {
-        headers: {
-            Authorization: `Bearer ${naverAccessToken}`,
+    const data = await axios('https://nid.naver.com/oauth2.0/token', {
+        params: {
+            grant_type: 'delete',  
+            client_id: NAVER_API_KEY,
+            access_token: naverAccessToken,
+            client_secret: NAVER_SECRET_KEY,
+            service_provider: 'NAVER',
         },
     });
-    logger.debug({
-        API: apiName,
-        naverId: naverId, 
-    });
-
+    console.log('datacheck', data.data);
+    
+    // 주의!
+        // logger.debug({
+        //     API: apiName,
+        //     data: data,
+        // }); -> JSON형식에 로거로하면 에러남
+        // 에러메세지 : "Converting circular structure to JSON\n"
+    
     // DB에서 리프레시토큰 삭제
-    if (naverId) {
+    if (data.data.result === 'success') {
         const result = await mySQLQuery(queryChangeRefreshTokenNull(query.user_email, apiName));
         logger.debug({
             API: apiName,
             result: result, 
         });
     }
-    return naverId
+    return data.data.result
 }
 
 // 카카오 로그아웃

@@ -121,7 +121,7 @@ router.post('/leave/sns/google', async (req, res) => {
     // 로그인 중인 상태에서 요청이 들어옴
 
     // API 정보
-    const apiName = '일반회원탈퇴 API';
+    const apiName = 'SNS 회원탈퇴(구글) API';
     logger.http({
         API: apiName,
         reqBody: req.body
