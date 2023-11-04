@@ -1210,7 +1210,7 @@ async function selectDiaryInfo(query, startDate, EndDate, apiName) {
                 LEFT JOIN USER AS U ON D.user_id = U.user_id
                 WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? )
                 AND D.select_date >= ? AND D.select_date <= ?
-                ORDER BY D.select_date ASC ;
+                ORDER BY D.select_date ASC, D.diary_id ASC;
             `,
     params: [query.dog_id, startDate, EndDate],
   };
