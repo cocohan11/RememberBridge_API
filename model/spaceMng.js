@@ -1030,7 +1030,7 @@ async function selectCommentInfo(space_id, limit, apiName) {
   });
 
   return {
-    text: `SELECT C.comment_id, U.user_name, U.user_prof_img, C.comment_text, DATE_FORMAT(C.create_at, '%Y-%m-%d') AS select_date, C.is_read, D.diary_content, D.diary_id
+    text: `SELECT C.comment_id, U.user_name, U.user_prof_img, SUBSTRING(C.comment_text, 1, 25) AS comment_text, DATE_FORMAT(C.create_at, '%Y-%m-%d') AS select_date, C.is_read, SUBSTRING(D.diary_content, 1, 25) AS diary_content, D.diary_id
               FROM COMMENT AS C
               INNER JOIN USER AS U ON C.user_id = U.user_id
               INNER JOIN DIARY as D on C.diary_id = D.diary_id
@@ -1103,8 +1103,8 @@ async function addComment(query, apiName) {
   return {
     // 컬럼 4개
     text: `INSERT INTO COMMENT 
-                (user_id, diary_id, comment_text, create_at) 
-                VALUES (?, ?, ?, now())`,
+                (user_id, diary_id, comment_text, is_read, create_at) 
+                VALUES (?, ?, ?, false, now())`,
     params: [query.user_id, query.diary_id, query.comment_text],
   };
 }
