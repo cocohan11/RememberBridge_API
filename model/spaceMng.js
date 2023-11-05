@@ -36,7 +36,7 @@ spaceMng.prototype.getNotice = async (query, apiName) => {
     limit: limit,
     offset: offset,
   });
-  
+
   
   let commet_info = await mySQLQuery(await selectCommentInfo(query.space_id, limit, offset, apiName));
   logger.debug({
@@ -467,7 +467,13 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     diaryID = diary_id;
   };
 
+
+  // 4. 안 읽은 알림 갯수 조회
+  let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
+  const notice_count = count[0].count;
+
   return {
+    notice_count,
     dog_info: dog_info,
     diary_info: diaryInfo,
   }; // 원하는 출력 모양을 추가함
@@ -1031,6 +1037,24 @@ async function checkfileExists(bucketPathList, bucketPathList_exist, apiName) {
 }
 //------------------------- 쿼리 -------------------------
 
+
+// 안 읽은 알림 갯수조회 쿼리문 작성
+async function selectUnreadNoticeCount(space_id, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    space_id: space_id,
+    function: "selectUnreadNoticeCount()",
+  });
+
+  return {
+    text: `SELECT COUNT(*) AS count
+            FROM COMMENT AS C
+            INNER JOIN DIARY as D on C.diary_id = D.diary_id
+            WHERE D.space_id = ? and C.is_read = true;
+        `,
+    params: [space_id],
+  };
+}
 
 // 알림 상세 조회 쿼리문 작성
 async function selectCommentInfo(space_id, limit, offset, apiName) {
