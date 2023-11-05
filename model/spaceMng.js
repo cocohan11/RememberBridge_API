@@ -488,50 +488,54 @@ spaceMng.prototype.changeDiary = async (query, files, fileInfo, apiName) => {
     diary_photos: diary_photos,
     diary_photos_length: diary_photos.length,
   });
-  if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+
 
   // 2-2) 존재유무 확인 - S3사진파일
-  let bucketPathList = [];
-  let bucketPathList_exist = [];
-  for (let i = 0; i < diary_photos.length; i++) {
-    // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
-    bucketPathList.push({
-      Bucket: diary_photos[i].bucket,
-      Key: diary_photos[i].s3key,
+  if (diary_photos.length != 0) {
+    let bucketPathList = [];
+    let bucketPathList_exist = [];
+    for (let i = 0; i < diary_photos.length; i++) {
+      // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
+      bucketPathList.push({
+        Bucket: diary_photos[i].bucket,
+        Key: diary_photos[i].s3key,
+      });
+      logger.debug("i :" + i);
+      logger.debug("bucketPathList :" + bucketPathList);
+    }
+  
+    // S3에 사진존재하는지 확인하기
+    const result = await checkfileExists(
+      bucketPathList,
+      bucketPathList_exist,
+      apiName
+    );
+    logger.debug({
+      API: apiName,
+      result: result,
     });
-    logger.debug("i :" + i);
-    logger.debug("bucketPathList :" + bucketPathList);
+    if (result == 1005) return 1005;
+  
+    // 3-1) 삭제하기 - 사진URL
+    let res_delete_url = await mySQLQuery(
+      await removeDiaryPhotoUrls(query.diary_id, apiName)
+    );
+    logger.debug({
+      API: apiName,
+      res_delete_url: res_delete_url,
+    });
+    if (res_delete_url.affectedRows == 0) return 9999; // 삭제실패시 9999 응답
+  
+    // 3-2) 삭제하기 - S3사진파일
+    const res_delete_s3 = await removeDiaryPhotosFromS3(bucketPathList, apiName);
+    logger.debug({
+      API: apiName,
+      res_delete_s3: res_delete_s3,
+    });
+    // return res_delete_s3; // 2000 또는 9999
   }
+  // return 1005; // 조회된 데이터가 없으면 1005 응답
 
-  // S3에 사진존재하는지 확인하기
-  const result = await checkfileExists(
-    bucketPathList,
-    bucketPathList_exist,
-    apiName
-  );
-  logger.debug({
-    API: apiName,
-    result: result,
-  });
-  if (result == 1005) return 1005;
-
-  // 3-1) 삭제하기 - 사진URL
-  let res_delete_url = await mySQLQuery(
-    await removeDiaryPhotoUrls(query.diary_id, apiName)
-  );
-  logger.debug({
-    API: apiName,
-    res_delete_url: res_delete_url,
-  });
-  if (res_delete_url.affectedRows == 0) return 9999; // 삭제실패시 9999 응답
-
-  // 3-2) 삭제하기 - S3사진파일
-  const res_delete_s3 = await removeDiaryPhotosFromS3(bucketPathList, apiName);
-  logger.debug({
-    API: apiName,
-    res_delete_s3: res_delete_s3,
-  });
-  // return res_delete_s3; // 2000 또는 9999
 
   // ------------------ 5. DB에 url 저장하기 (여기위치하기 - 삭제후 저장) -------------------
   for (let i = 0; i < fileInfo.locations.length; i++) {
