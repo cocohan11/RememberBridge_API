@@ -254,7 +254,7 @@ spaceMng.prototype.getDiaryDetail = async (diaryId, userId, apiName) => {
     API: apiName,
     diary_photos: diary_photos,
   });
-  if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+  // if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
 
   // 최종 응답값에 필요한 데이터들
   return {
