@@ -16,7 +16,29 @@ AWS.config.update({
   secretAccessKey: AWS_S3_ACCESS_KEY,
 });
 const s3 = new AWS.S3();
-function spaceMng() {}
+function spaceMng() { }
+
+
+
+
+/** 알림 상세 조회
+ */
+spaceMng.prototype.getNotice = async (query, apiName) => {
+
+  
+  let commet_info = await mySQLQuery(await selectCommentInfo(query.space_id, 20, apiName));
+  logger.debug({
+    API: apiName,
+    commet_info: commet_info,
+  });
+  if (!commet_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+  
+  return {
+    commet_info : commet_info
+  }
+};
+
 
 /** 댓글 삭제
  * 1. 존재유무 확인
@@ -996,6 +1018,31 @@ async function checkfileExists(bucketPathList, bucketPathList_exist, apiName) {
   }
 }
 //------------------------- 쿼리 -------------------------
+
+
+// 일기 댓글 조회 쿼리문 작성
+async function selectCommentInfo(space_id, limit, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    space_id: space_id,
+    limit: limit,
+    function: "selectCommentInfo()",
+  });
+
+  return {
+    text: `SELECT C.comment_id, U.user_name, U.user_prof_img, C.comment_text, DATE_FORMAT(C.create_at, '%Y-%m-%d') AS select_date, C.is_read, D.diary_content, D.diary_id
+              FROM COMMENT AS C
+              INNER JOIN USER AS U ON C.user_id = U.user_id
+              INNER JOIN DIARY as D on C.diary_id = D.diary_id
+              WHERE D.space_id = ?
+              ORDER BY C.create_at ASC
+              LIMIT ?; 
+        `,
+    params: [space_id, limit],
+  };
+}
+
+
 // 반려견 프사 수정 쿼리문 작성
 function changeDog_img(query, url, apiName) {
   logger.debug({

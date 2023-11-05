@@ -15,6 +15,7 @@ const uploadForBackground = multerMid('memory_space/background');  // 추억공�
 
 //--------------------------------------------------------
 
+
 /** 댓글 삭제 API */
 router.get('/diary/comment/delete/:comment_id?', async (req, res) => { 
 
@@ -208,6 +209,37 @@ router.get('/diary/like/:diary_id/:user_id', async (req, res) => {
 
 })
 
+
+
+/** 타임라인 알림 상세 조회 (댓글) API */
+router.get('/timeline/notice/:space_id', async (req, res) => {
+
+  // API 정보
+  const apiName = '알림 상세 조회 API';
+  logger.http({
+    API: apiName,
+    reqParams: req.params
+  });
+  // 파라미터값 누락 확인
+  if (!req.params.space_id) {
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const plusResult = await spaceMngDB.getNotice(req.params, apiName);
+  logger.info({
+    API: apiName,
+    plusResult: plusResult
+  });
+  
+  // response
+  if (plusResult != 9999 || plusResult != 1005 || plusResult != undefined) {
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, plusResult, apiName, null, null);
+  }
+
+})
 
 
 /** 타임라인 반려견 프사 수정 API */
