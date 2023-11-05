@@ -459,9 +459,23 @@ spaceMng.prototype.changeDiary = async (query, files, fileInfo, apiName) => {
   });
 
   // 1. 사진 수정이 없다면 - 최종응답하기
-  if (!files) {
-    if (res.changedRows == 1) return 2000; // 1개 레코드 수정됐으면 성공
-    else return 1005;
+  if (files.length === 0) {
+    logger.debug({
+      API: apiName,
+      파일유무: '전송한 사진없다-',
+      affectedRows: res.affectedRows,
+    });
+    if (res.affectedRows > 0) {
+      return 2000; // 1개 레코드 수정됐으면 성공
+    } else {
+      return 1005;
+    }
+  } else {
+    logger.debug({
+      API: apiName,
+      파일유무: '전송한 사진있다-',
+      affectedRows: res.affectedRows,
+    });
   }
 
   // ------------------------- 수정 있다면 -------------------------

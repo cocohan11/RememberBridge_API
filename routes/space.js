@@ -423,6 +423,7 @@ router.post('/diary', uploadForTimelines.array('diary_imgs', 5), async (req, res
     API: apiName,
     reqBody: req.body,
     reqFiles: req.files,
+    reqFilesLength: req.files.length,
   });
 
   // 파라미터값 누락 확인
