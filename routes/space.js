@@ -212,7 +212,7 @@ router.get('/diary/like/:diary_id/:user_id', async (req, res) => {
 
 
 /** 타임라인 알림 상세 조회 (댓글) API */
-router.get('/timeline/notice/:space_id', async (req, res) => {
+router.get('/timeline/notice/:space_id?/:page?', async (req, res) => {
 
   // API 정보
   const apiName = '알림 상세 조회 API';
@@ -221,7 +221,7 @@ router.get('/timeline/notice/:space_id', async (req, res) => {
     reqParams: req.params
   });
   // 파라미터값 누락 확인
-  if (!req.params.space_id) {
+  if (!req.params.space_id || !req.params.page) {
     return resCode.returnResponseCode(res, 1002, apiName, null, null);
   } 
 

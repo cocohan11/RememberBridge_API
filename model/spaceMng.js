@@ -8,6 +8,8 @@ const {
   AWS_S3_ACCESS_ID,
   AWS_S3_ACCESS_KEY,
   AWS_S3_REGION, // 환경변수'
+  NOTICE_LIMIT,
+  NOTICE_PAGE,
 } = process.env;
 const AWS = require("aws-sdk");
 AWS.config.update({
@@ -25,8 +27,18 @@ function spaceMng() { }
  */
 spaceMng.prototype.getNotice = async (query, apiName) => {
 
+  const page = parseInt(query.page, 10);
+  const limit = parseInt(NOTICE_LIMIT, 10);
+  const offset = limit * page;
+  logger.debug({
+    API: apiName,
+    page: page,
+    limit: limit,
+    offset: offset,
+  });
   
-  let commet_info = await mySQLQuery(await selectCommentInfo(query.space_id, 20, apiName));
+  
+  let commet_info = await mySQLQuery(await selectCommentInfo(query.space_id, limit, offset, apiName));
   logger.debug({
     API: apiName,
     commet_info: commet_info,
@@ -1020,12 +1032,11 @@ async function checkfileExists(bucketPathList, bucketPathList_exist, apiName) {
 //------------------------- 쿼리 -------------------------
 
 
-// 일기 댓글 조회 쿼리문 작성
-async function selectCommentInfo(space_id, limit, apiName) {
+// 알림 상세 조회 쿼리문 작성
+async function selectCommentInfo(space_id, limit, offset, apiName) {
   logger.debug({
     API: apiName + " 쿼리문 작성",
     space_id: space_id,
-    limit: limit,
     function: "selectCommentInfo()",
   });
 
@@ -1036,9 +1047,10 @@ async function selectCommentInfo(space_id, limit, apiName) {
               INNER JOIN DIARY as D on C.diary_id = D.diary_id
               WHERE D.space_id = ?
               ORDER BY C.create_at ASC
-              LIMIT ?; 
-        `,
-    params: [space_id, limit],
+              LIMIT ? OFFSET ?; 
+        `, // LIMIT 20 : 20개씩
+           // OFFSET 20 : 시작지점 (0부터)
+    params: [space_id, limit, offset],
   };
 }
 
