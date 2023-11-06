@@ -54,19 +54,19 @@ const logger = createLogger({
       // log 파일 설정
       level: "debug", // 레벨 0~3까지 로그파일에 저장됨
       datePattern: "YYYY-MM-DD", // 날짜포맷방식
-      dirname: logDir+'/all_level', // 디렉토리 파일 이름 설정
+      dirname: logDir + "/all_level", // 디렉토리 파일 이름 설정
       filename: "%DATE%.log", // 파일이름 설정, %DATE% - 자동으로 날짜가 들어옴
       maxSize: "10m", // 로그파일 크기, 정의하지 않으면 데이터가 쌓이고, 제안하면 초과시 앞의 데이터를 지움
-      maxFiles: "7d", // 최근 7일치 로그 파일만 보관
+      maxFiles: 3, // 최근 7일치 로그 파일만 보관
     }),
     new winstonDaily({
       // 로그 파일 설정
       level: "error", // 심각도
       datePattern: "YYYY-MM-DD",
-      dirname: logDir+'/error', // 디렉토리 파일 이름 설정
+      dirname: logDir + "/error", // 디렉토리 파일 이름 설정
       filename: "%DATE%.error.log", // 파일이름 설정, 에러파일을 구분해 별도보관
       maxSize: "10m", // 로그파일 크기
-      maxFiles: "7d", // 최근 7일치 로그 파일만 보관
+      maxFiles: 3, // 최근 7일치 로그 파일만 보관
     }),
   ],
 });
