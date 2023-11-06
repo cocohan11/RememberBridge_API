@@ -211,6 +211,41 @@ router.get('/diary/like/:diary_id/:user_id', async (req, res) => {
 
 
 
+/** 타임라인 알림 읽음처리 (댓글) API */
+router.post('/timeline/notice', async (req, res) => { 
+
+  // API 정보
+  const apiName = '알림 읽음처리 (댓글) API';
+  logger.http({
+    API: apiName,
+    reqBody: req.body,
+ });
+
+  // 파라미터값 누락 확인
+  if (!req.body.comment_id) { 
+    return resCode.returnResponseCode(res, 1002, apiName, null, null);
+  } 
+
+  // DB
+  const result = await spaceMngDB.setNoticeToRead(req.body, apiName); 
+  logger.info({
+    API: apiName,
+    result: result // 성공시) result=2000 응답
+  });
+
+  // response
+  if (result == 2000) {
+    plusResult = { isRead: 'alreadyRead' }; // 원하는 출력 모양을 추가함
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else if (result == 2009) {
+    plusResult = { isRead : 'readNow' }; // 원하는 출력 모양을 추가함
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, result, apiName, null, null);
+  }
+
+})
+
 /** 타임라인 알림 상세 조회 (댓글) API */
 router.get('/timeline/notice/:space_id?/:page?', async (req, res) => {
 
@@ -240,6 +275,7 @@ router.get('/timeline/notice/:space_id?/:page?', async (req, res) => {
   }
 
 })
+
 
 
 /** 타임라인 반려견 프사 수정 API */

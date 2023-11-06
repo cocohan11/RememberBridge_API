@@ -23,7 +23,29 @@ function spaceMng() { }
 
 
 
-/** 알림 상세 조회
+/** 알림 읽음처리 (댓글)
+ */
+spaceMng.prototype.setNoticeToRead = async (query, apiName) => {
+
+  logger.debug({
+    API: apiName,
+    query: query,
+  });
+
+  const res = await mySQLQuery(await changeComment_isRead(query.comment_id, apiName));
+  logger.debug({
+    API: apiName,
+    res: res,
+  });
+
+  // 읽음처리 or 이미읽은 댓글
+  if (res.changedRows == 1) return 2000; // 1개 레코드 수정됐으면 읽음처리 성공
+  if (res.affectedRows == 1) return 2009; // 이미 읽은 댓글임
+  else return 9999;
+
+};
+
+/** 알림 상세 조회 (댓글)
  */
 spaceMng.prototype.getNotice = async (query, apiName) => {
 
@@ -50,7 +72,6 @@ spaceMng.prototype.getNotice = async (query, apiName) => {
     commet_info : commet_info
   }
 };
-
 
 /** 댓글 삭제
  * 1. 존재유무 확인
@@ -196,6 +217,9 @@ spaceMng.prototype.addComment = async (query, apiName) => {
   };
 };
 
+
+
+
 /** 일기 상세 조회
  * 1. Like테이블 값 리턴 (like)
  * 2. Diary테이블 값 리턴 (emotion, diary_content)
@@ -329,156 +353,6 @@ spaceMng.prototype.setLike = async (diaryId, userId, apiName) => {
     return true; // 좋아요(O) 리턴
   }
 };
-
-/** 추억공간 배경사진 수정 
-   - DOG 테이블에 반려견 배경사진 수정
-*/
-spaceMng.prototype.changeBackgroundImg = async (
-  query,
-  file_location,
-  apiName
-) => {
-  // body(반려견 정보)
-  logger.debug({
-    API: apiName,
-    params: query,
-    file_location: file_location,
-  });
-
-  // DOG 테이블에 배경사진 수정
-  let res = await mySQLQuery(
-    await changeBackgroundImg(query, file_location, apiName)
-  );
-  logger.debug({
-    API: apiName,
-    res: res,
-  });
-
-  if (res.changedRows == 1) {
-    // 변경된값이 1개면 성공
-    return 2000;
-  } else {
-    // 변경된값이 없음
-    return 1005;
-  }
-};
-
-/** 타임라인 반려견 프사 수정 */
-spaceMng.prototype.setDogImg = async (query, url, apiName) => {
-  try {
-    logger.debug({
-      API: apiName,
-      params: query,
-      url: url,
-    });
-    // 유저정보 수정 쿼리문 날리기
-    const res = await mySQLQuery(changeDog_img(query, url, apiName));
-    logger.debug({
-      API: apiName,
-      res: res,
-    });
-
-    if (res.changedRows == 1) return 2000;
-    else return 1005;
-  } catch (error) {
-    logger.error({
-      API: apiName,
-      error: error,
-    });
-    return 9999;
-  }
-};
-
-/** 타임라인 조회
- * 1. DB) DOG 테이블 조회
- * 2. DB) USER 테이블 조회
- * 3. DB) DIARY, DIARY_PHOTO 테이블 조회
- * 4. 응답값 그룹화 (날짜-일기-일기데이터 순)
- */
-spaceMng.prototype.getTimeline = async (query, apiName) => {
-  // 1. DB) DOG 테이블에서 dog_info 리턴
-  let dog_info = await mySQLQuery(await selectDogInfo(query, apiName));
-  logger.debug({
-    API: apiName,
-    dog_info: dog_info,
-  });
-  if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
-
-
-  // 페이징에 필요한 날짜 추출 (2023-09-01 ~ 2023-09-30)
-  let dates = formattedDate(query.year, query.month);
-  logger.debug({
-    API: apiName,
-    dates: dates,
-  });
-
-
-  // 3. DB) 일기 데이터 얻기
-  let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate, apiName));
-
-
-  // 변환된 데이터를 저장할 빈 객체
-  const diaryInfo = {};
-  let arrPhoto = [];
-  let diaryID = 0;
-
-  // diary_info 배열을 순회
-  for (const [index, result] of diary_info.entries()) {
-    const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
-    logger.debug(`${index}`);
-    logger.debug(`${photo_url}`);
-    logger.debug(`${diaryID}`);
-    logger.debug(`${diary_id}`);
-    
-    // 날짜를 가진 객체를 찾거나 만듦
-    if (!diaryInfo[select_date]) {
-      diaryInfo[select_date] = [];
-    }
-    
-    // 재료
-    // 같은 일기가 아니라면
-    if (diaryID != diary_id) {
-      logger.debug(`초기화%%%%%%%%%%%%%`);
-      arrPhoto = [];
-    }
-    arrPhoto.push(photo_url);
-    logger.debug(`*********arrPhoto : ${arrPhoto}`);
-
-    aa = { 
-      user_name,
-      user_prof_img,
-      diary_content,
-      photos : [], // 사진만 배열로 만들기 (제일 작은 단위)
-    };
-    bb = [];
-    bb.push(aa);
-    cc = { // 일기 id로 감싸기
-      [diary_id]: aa
-    }; 
-
-
-    // 날짜 안에 일기 데이터가 없다면
-    if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
-      diaryInfo[select_date].push(cc); // 객체를 통째로 추가
-    } 
-
-    diaryInfo[select_date][0][diary_id] = bb;
-    diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
-    diaryID = diary_id;
-  };
-
-
-  // 4. 안 읽은 알림 갯수 조회
-  let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
-  const notice_count = count[0].count;
-
-  return {
-    notice_count,
-    dog_info: dog_info,
-    diary_info: diaryInfo,
-  }; // 원하는 출력 모양을 추가함
-};
-
 
 /** 일기 수정
  * 0. 미들웨어로 S3에 새로받은 사진 저장하기
@@ -749,6 +623,192 @@ spaceMng.prototype.addDiary = async (query, fileInfo, apiName) => {
 
   // 4. diary_id 응답하기
   return diary_id;
+};
+
+
+
+/** 타임라인 반려견 프사 수정 */
+spaceMng.prototype.setDogImg = async (query, url, apiName) => {
+  try {
+    logger.debug({
+      API: apiName,
+      params: query,
+      url: url,
+    });
+    // 유저정보 수정 쿼리문 날리기
+    const res = await mySQLQuery(changeDog_img(query, url, apiName));
+    logger.debug({
+      API: apiName,
+      res: res,
+    });
+
+    if (res.changedRows == 1) return 2000;
+    else return 1005;
+  } catch (error) {
+    logger.error({
+      API: apiName,
+      error: error,
+    });
+    return 9999;
+  }
+};
+
+/** 타임라인 조회
+ * 1. DB) DOG 테이블 조회
+ * 2. DB) USER 테이블 조회
+ * 3. DB) DIARY, DIARY_PHOTO 테이블 조회
+ * 4. 응답값 그룹화 (날짜-일기-일기데이터 순)
+ */
+spaceMng.prototype.getTimeline = async (query, apiName) => {
+  // 1. DB) DOG 테이블에서 dog_info 리턴
+  let dog_info = await mySQLQuery(await selectDogInfo(query, apiName));
+  logger.debug({
+    API: apiName,
+    dog_info: dog_info,
+  });
+  if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+
+  // 페이징에 필요한 날짜 추출 (2023-09-01 ~ 2023-09-30)
+  let dates = formattedDate(query.year, query.month);
+  logger.debug({
+    API: apiName,
+    dates: dates,
+  });
+
+
+  // 3. DB) 일기 데이터 얻기
+  let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate, apiName));
+
+
+  // 변환된 데이터를 저장할 빈 객체
+  const diaryInfo = {};
+  let arrPhoto = [];
+  let diaryID = 0;
+
+  // diary_info 배열을 순회
+  for (const [index, result] of diary_info.entries()) {
+    const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
+    logger.debug(`${index}`);
+    logger.debug(`${photo_url}`);
+    logger.debug(`${diaryID}`);
+    logger.debug(`${diary_id}`);
+    
+    // 날짜를 가진 객체를 찾거나 만듦
+    if (!diaryInfo[select_date]) {
+      diaryInfo[select_date] = [];
+    }
+    
+    // 재료
+    // 같은 일기가 아니라면
+    if (diaryID != diary_id) {
+      logger.debug(`초기화%%%%%%%%%%%%%`);
+      arrPhoto = [];
+    }
+    arrPhoto.push(photo_url);
+    logger.debug(`*********arrPhoto : ${arrPhoto}`);
+
+    aa = { 
+      user_name,
+      user_prof_img,
+      diary_content,
+      photos : [], // 사진만 배열로 만들기 (제일 작은 단위)
+    };
+    bb = [];
+    bb.push(aa);
+    cc = { // 일기 id로 감싸기
+      [diary_id]: aa
+    }; 
+
+
+    // 날짜 안에 일기 데이터가 없다면
+    if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
+      diaryInfo[select_date].push(cc); // 객체를 통째로 추가
+    } 
+
+    diaryInfo[select_date][0][diary_id] = bb;
+    diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
+    diaryID = diary_id;
+  };
+
+
+  // 4. 안 읽은 알림 갯수 조회
+  let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
+  const notice_count = count[0].count;
+
+  return {
+    notice_count,
+    dog_info: dog_info,
+    diary_info: diaryInfo,
+  }; // 원하는 출력 모양을 추가함
+};
+
+
+
+/** 추억공간 배경사진 수정 
+   - DOG 테이블에 반려견 배경사진 수정
+*/
+spaceMng.prototype.changeBackgroundImg = async (
+  query,
+  file_location,
+  apiName
+) => {
+  // body(반려견 정보)
+  logger.debug({
+    API: apiName,
+    params: query,
+    file_location: file_location,
+  });
+
+  // DOG 테이블에 배경사진 수정
+  let res = await mySQLQuery(
+    await changeBackgroundImg(query, file_location, apiName)
+  );
+  logger.debug({
+    API: apiName,
+    res: res,
+  });
+
+  if (res.changedRows == 1) {
+    // 변경된값이 1개면 성공
+    return 2000;
+  } else {
+    // 변경된값이 없음
+    return 1005;
+  }
+};
+
+/** 추억공간 배경사진 수정 
+   - DOG 테이블에 반려견 배경사진 수정
+*/
+spaceMng.prototype.changeBackgroundImg = async (
+  query,
+  file_location,
+  apiName
+) => {
+  // body(반려견 정보)
+  logger.debug({
+    API: apiName,
+    params: query,
+    file_location: file_location,
+  });
+
+  // DOG 테이블에 배경사진 수정
+  let res = await mySQLQuery(
+    await changeBackgroundImg(query, file_location, apiName)
+  );
+  logger.debug({
+    API: apiName,
+    res: res,
+  });
+
+  if (res.changedRows == 1) {
+    // 변경된값이 1개면 성공
+    return 2000;
+  } else {
+    // 변경된값이 없음
+    return 1005;
+  }
 };
 
 /** 추억공간 & 반려견 정보 삭제 (추후 사진삭제예정)
@@ -1036,6 +1096,22 @@ async function checkfileExists(bucketPathList, bucketPathList_exist, apiName) {
   }
 }
 //------------------------- 쿼리 -------------------------
+
+// 알림 읽음처리 쿼리문 작성
+function changeComment_isRead(comment_id, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    comment_id: comment_id,
+    function: "changeComment_isRead()",
+  });
+
+  return {
+    text: `UPDATE COMMENT
+            SET is_read = true
+            WHERE comment_id = ?`,
+    params: [comment_id],
+  };
+}
 
 
 // 안 읽은 알림 갯수조회 쿼리문 작성
