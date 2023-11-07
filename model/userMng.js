@@ -2,6 +2,7 @@
 
 const dbPool = require('../util/dbPool');
 // const camelcaseKeys = require('camelcase-keys'); //카멜케이스로 DB컬럼값을 응답하기 위한 모듈 선언
+const S3function = require("../util/S3function");
 const connection = dbPool.init();
 const bcrypt = require("bcrypt"); // 암호화 해시함수
 const nodemailer = require('nodemailer');
@@ -15,6 +16,18 @@ const {
     KAKAO_REST_API_KEY, KAKAO_REDIRECT_URI, KAKAO_CLIENT_SECRET,
     NAVER_API_KEY, NAVER_SECRET_KEY
 } = process.env;
+const {
+    AWS_S3_ACCESS_ID,
+    AWS_S3_ACCESS_KEY,
+    AWS_S3_REGION, // 환경변수'
+  } = process.env;
+const AWS = require("aws-sdk");
+AWS.config.update({
+region: AWS_S3_REGION,
+accessKeyId: AWS_S3_ACCESS_ID,
+secretAccessKey: AWS_S3_ACCESS_KEY,
+});
+const s3 = new AWS.S3();
 function userMng() {}
 
 
@@ -335,67 +348,118 @@ userMng.prototype.addSnsUser = async (query, apiName) => {
 };
 
 /** 회원탈퇴 (일반)*/
-userMng.prototype.leaveUser = (query, apiName) => { // 논리삭제 (물리삭제X)
+userMng.prototype.leaveUser = async (query, apiName) => { // (논리삭제 -> 물리삭제)
     
     
     logger.debug({
         API: apiName,
-        params: query, 
+        params: query,
     });
-
-
-    // 비밀번호 일치하는지 확인하기
+    // (함수) 비밀번호 일치하는지 확인하기
     // 비밀번호 복호화
     async function matchHashPassword(pw, pwfromDB) {
         const isMatch = await bcrypt.compare(pw, pwfromDB);
         logger.debug({
             API: apiName,
-            pw: pw, 
-            pwfromDB: pwfromDB, 
-            isMatch: isMatch, 
+            pw: pw,
+            pwfromDB: pwfromDB,
+            isMatch: isMatch,
         });
         return isMatch;
     }
 
-    // 일반회원 로그인 쿼리문 날리기
-    return new Promise((resolve, reject) => {
-        mySQLQuery(queryGetUser(query, apiName)) // 쿼리문 실행 
-            .then(async (res) => { 
-                logger.debug({
-                    API: apiName,
-                    query_user_pw: query.user_pw, 
-                });
-
-
-                isMatch = await matchHashPassword(query.user_pw, res[res.length-1].user_pw); // 임시) 해당이멜로조회된 제일 최신 user를 리턴한다.
-                
-
-                logger.debug({
-                    API: apiName,
-                    'res[0].user_pw': res[res.length - 1].user_pw, 
-                    isMatch: isMatch,
-                });
-                if (isMatch == false) return resolve(2009); 
-                if (isMatch == true) result = await mySQLQuery(await leaveUser(query, apiName));
-                logger.debug({
-                    APIcheck: apiName,
-                    result: result, 
-                });
-                if (result.affectedRows >= 1) return resolve(2000);
-                if (result.affectedRows < 1) return resolve(1005); // 테스트이후 수정하기
-
-
-            })
-            .catch((err) => {
-                logger.error({
-                    API: apiName,
-                    error: err
-                });
-                return resolve(9999);
-            });
+    // 회원 존재유무
+    res = await mySQLQuery(queryGetUser(query, apiName));
+    logger.debug({
+        API: apiName,
+        query_user_pw: query.user_pw,
+        res: res,
     });
-}
+    if (res.length === 0) return 1005; // 유저조회 예외처리
+    
 
+    // 비밀번호 일치확인
+    const isMatch = await matchHashPassword(query.user_pw, res[res.length - 1].user_pw); // 임시) 해당이멜로조회된 제일 최신 user를 리턴한다.
+    const user_id = res[0].user_id;
+    logger.debug({
+        API: apiName,
+        user_id: user_id,
+        'res[0].user_pw': res[res.length - 1].user_pw,
+        isMatch: isMatch,
+    });
+    if (isMatch == false) return 2009; // 비밀번호 일치 실패 예외처리
+    // 비밀번호 일치 성공
+    /**
+     * 1. USER - 유저 삭제
+     * 2. 기타 테이블 삭제
+     *      DOG - 반려견 삭제
+     *      MEMORY_SPACE - 추억공간 삭제
+     *      DIARY - 일기 삭제
+     *      LIKE - 좋아요 삭제
+     *      COMMENT - 댓글 삭제     
+     * 
+     * 3-1. DIARY_PHOTO - diary_id join문으로 조회
+     * 3. S3 사진 - 1) 유저 프사          // 주의)존재유무확인 후 삭제하기
+     *              2) 반려견 프사
+     *              3) 반려견 배경사진
+     *              4) 일기사진
+     * 4. DIARY_PHOTO - 사진URL 삭제 (join문)
+    */ 
+        
+    
+    // 1. USER - 유저 삭제
+    result = await mySQLQuery(await leaveUser(query, apiName));
+    logger.debug({
+        API: apiName,
+        Userresult: result,
+    });
+    if (result.affectedRows === 0) return resolve(1005); // 유저삭제 예외처리
+
+
+    // 2. 반려견, 추억공간, 일기, 좋아요, 댓글 삭제
+    result = await mySQLQuery(await removeOthers(user_id, apiName));
+    logger.debug({
+        API: apiName,
+        DOGresult: result,
+        resultLength: result.length,
+    });
+    
+
+    // 3-1. 한 유저의 모든 사진 파일명 조회 (파일명으로 존재유무 확인)
+    let diary_photos = await mySQLQuery(await getDiaryIdForAUser(user_id, apiName));
+    logger.debug({
+        API: apiName,
+        diary_photos_length: diary_photos.length,
+        diary_photos: diary_photos,
+    });
+
+    // 3. S3 사진 존재확인
+    let bucketPathList_exist = [];
+    result = await S3function.checkfileExists(s3, diary_photos, bucketPathList_exist, apiName);
+    logger.debug({
+        API: apiName,
+        CheckResult: result,
+    });
+    if (result === 1005) return 1005;
+
+
+    // 4. S3 사진 삭제
+    result = await S3function.removeDiaryPhotosFromS3(s3, diary_photos, apiName);
+    logger.debug({
+        API: apiName,
+        DeleteResult: result
+    });
+
+    // 5. 사진 URL 삭제
+    result = await mySQLQuery(removePhotoUrl(user_id, apiName));
+    logger.debug({
+        API: apiName,
+        DeleteResult: result
+    });
+
+
+    return 2000;
+}
 /** 비밀번호 임시발급
  * 1. 이메일 조회
  * 2. 이메일 전송
@@ -586,7 +650,67 @@ userMng.prototype.addUser = (query, apiName) => {
 
 //ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
 
-// AccessToken 토큰 갱신
+
+// 회원탈퇴 - 한 유저의 일기id조회
+function removePhotoUrl(user_id, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: user_id,
+        function: 'removePhotoUrl()',
+    });
+
+    return {
+        text: `DELETE P
+                FROM DIARY_PHOTO P
+                INNER JOIN DIARY D ON P.diary_id = D.diary_id
+                WHERE D.user_id = ?
+                 `,
+        params: [user_id],
+    };
+}
+
+// 회원탈퇴 - 한 유저의 일기id조회
+function getDiaryIdForAUser(user_id, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: user_id,
+        function: 'getDiaryIdForAUser()',
+    });
+
+    return {
+        text: `SELECT P.bucket AS Bucket, P.s3key AS 'Key'
+                FROM DIARY_PHOTO P
+                INNER JOIN DIARY D ON P.diary_id = D.diary_id
+                WHERE D.user_id = ?;
+                 `,
+        params: [user_id],
+    };
+}
+
+// 회원탈퇴 - 반려견 삭제 쿼리문 작성
+async function removeOthers(user_id, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: user_id,
+        function: 'removeOthers()',
+    });
+
+    return {
+        text: `
+        DELETE FROM DOG
+            WHERE user_id = ? ;
+        DELETE FROM MEMORY_SPACE
+            WHERE user_id = ? ;
+        DELETE FROM DIARY
+            WHERE user_id = ? ;
+        DELETE FROM rb2web.LIKE
+            WHERE user_id = ? ;
+        DELETE FROM rb2web.COMMENT
+            WHERE user_id = ? ;
+        `, 
+        params: [user_id, user_id, user_id, user_id, user_id, user_id] 
+    };
+}
 
 
 // 회원탈퇴 쿼리문 작성

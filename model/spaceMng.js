@@ -1,6 +1,7 @@
 /** 추억공간 비지니스 로직 */
 
 const dbPool = require("../util/dbPool");
+const S3function = require("../util/S3function");
 const connection = dbPool.init();
 const logger = require("../winston/logger");
 require("dotenv").config(); // 환경변수 모듈
@@ -419,7 +420,8 @@ spaceMng.prototype.changeDiary = async (query, files, fileInfo, apiName) => {
     }
   
     // S3에 사진존재하는지 확인하기
-    const result = await checkfileExists(
+    const result = await S3function.checkfileExists(
+      s3,
       bucketPathList,
       bucketPathList_exist,
       apiName
@@ -441,7 +443,7 @@ spaceMng.prototype.changeDiary = async (query, files, fileInfo, apiName) => {
     if (res_delete_url.affectedRows == 0) return 9999; // 삭제실패시 9999 응답
   
     // 3-2) 삭제하기 - S3사진파일
-    const res_delete_s3 = await removeDiaryPhotosFromS3(bucketPathList, apiName);
+    const res_delete_s3 = await S3function.removeDiaryPhotosFromS3(s3, bucketPathList, apiName);
     logger.debug({
       API: apiName,
       res_delete_s3: res_delete_s3,
@@ -512,8 +514,13 @@ spaceMng.prototype.removeDiary = async (query, apiName) => {
     });
   }
 
-  // S3에 사진존재하는지 확인하기
-  const result = await checkfileExists(bucketPathList, bucketPathList_exist);
+    // S3에 사진존재하는지 확인하기
+    const result = await S3function.checkfileExists(
+      s3,
+      bucketPathList,
+      bucketPathList_exist,
+      apiName
+    );
   logger.debug({
     API: apiName,
     result: result,
@@ -974,127 +981,6 @@ function formattedDate(year, month, apiName) {
   };
 }
 
-// S3 파일삭제 요청양식
-function pramsForDeleteObjects(bucketPathList_exist, idx, apiName) {
-  return (params = {
-    Bucket: bucketPathList_exist[idx].Bucket,
-    Delete: {
-      Objects: [
-        {
-          Key: bucketPathList_exist[idx].Key,
-        },
-      ],
-      Quiet: false, // (참고) Delete API 요청에 대한 응답에 삭제 작업의 성공/실패 여부와 관련된 정보
-    },
-  });
-}
-
-// S3 파일삭제 함수
-async function removeDiaryPhotosFromS3(bucketPathList, apiName) {
-  logger.debug({
-    API: apiName,
-    bucketPathList_length: bucketPathList.length,
-    detail: "deleteFiles() 삭제할 파일 갯수",
-    function: "removeDiaryPhotosFromS3()",
-  });
-
-  try {
-    const deletePromises = bucketPathList.map((value, index) => {
-      return s3
-        .deleteObjects(pramsForDeleteObjects(bucketPathList, index))
-        .promise();
-    });
-
-    await Promise.all(deletePromises); // 모든 삭제 작업을 병렬로 처리
-    logger.debug({
-      API: apiName,
-      detail: "File deleted successfully.", // 조회O 삭제O
-      function: "removeDiaryPhotosFromS3()",
-    });
-
-    return 2000;
-  } catch (err) {
-    logger.error({
-      API: apiName,
-      error: err.stack,
-      detail: "deleteFiles() 에러",
-    });
-    return 9999;
-  }
-}
-
-// S3 파일존재유무 조회
-async function checkfileExists(bucketPathList, bucketPathList_exist, apiName) {
-  logger.debug({
-    API: apiName,
-    bucketPathList: bucketPathList,
-    detail: "파일명으로 S3에 사진있는지 조회하기",
-    function: "checkfileExists()",
-  });
-
-  const promises = [];
-
-  for (const value of bucketPathList) {
-    if (value != null) {
-      promises.push(
-        new Promise(async (resolve, reject) => {
-          try {
-            const exists_data = await s3.headObject(value).promise();
-            logger.debug({
-              API: apiName,
-              detail: `File ${value.Key} exists. checking...and list push`,
-              function: "checkfileExists()",
-            });
-
-            bucketPathList_exist.push(value);
-            logger.debug({
-              API: apiName,
-              bucketPathList_exist: bucketPathList_exist,
-              function: "checkfileExists()",
-            });
-
-            resolve(exists_data);
-          } catch (err) {
-            logger.debug(`File ${value.Key} does not exist.`);
-            logger.error({
-              API: apiName,
-              err: err,
-              detail: `File ${value.Key} does not exist.`,
-              function: "checkfileExists()",
-            });
-            reject(1005);
-          }
-        })
-      );
-    }
-  }
-
-  try {
-    logger.debug({
-      API: apiName,
-      promises_length: promises.length,
-      detail: `promises 안에 담겨져서 존재하는지 조회할 파일 갯수: ${promises.length}`,
-      function: "checkfileExists()",
-    });
-
-    const res = await Promise.all(promises);
-    logger.debug({
-      API: apiName,
-      res: res,
-      detail: `All files exist. Deleting...`,
-      function: "checkfileExists()",
-    });
-    return 2000;
-  } catch (err) {
-    logger.error({
-      API: apiName,
-      err: err,
-      detail: "File does not exist. Cannot delete.",
-      function: "checkfileExists()",
-    });
-    return 1005;
-  }
-}
 //------------------------- 쿼리 -------------------------
 
 // 알림 읽음처리 쿼리문 작성
