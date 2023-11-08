@@ -677,7 +677,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
 
   
   // 함수를 호출하여 결과를 확인합니다.
-  let startAndEndDates = printDates(query.page_num); // 그 다음 7일치 날짜 출력
+  let startAndEndDates = printDates(query.page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
   logger.debug({
     API: apiName,
     startAndEndDates: startAndEndDates,
@@ -959,13 +959,47 @@ spaceMng.prototype.addSpace = async (query, file_location, apiName) => {
 
 //------------------------- 함수 -------------------------
 // 페이지 번호를 인자로 받아 해당 페이지에 해당하는 일주일을 출력하는 함수입니다.
-function printDates(page_num) {
-  // 일단, 오늘 날짜를 2023년 11월 8일로 설정합니다.
-  let today = new Date(2023, 10, 30); // 월은 0부터 시작하므로 11월은 10입니다.
+function printDates(page_num, year, month) {
 
-  // 출력할 날짜 범위의 마지막 날짜는 오늘 날짜에서 (페이지 번호-1)*7일을 뺀 날입니다.
-  let startDate = new Date(today);
-  startDate.setDate(today.getDate() - ((page_num - 1) * 7));
+  
+  // 일단, 오늘 날짜를 2023년 11월 8일로 설정합니다.
+  let today = new Date(); // 월은 0부터 시작하므로 11월은 10입니다.
+  
+  // 요청하는 데이터가 이번달인 경우
+  logger.debug({
+    year: year,
+    month: month,
+    getFullYear: today.getFullYear(),
+    getMonth: today.getMonth() + 1,
+  });
+
+
+  if (today.getFullYear() == year && today.getMonth() + 1 == month) {
+    startDate = new Date(today);
+    startDate.setDate(today.getDate() - ((page_num - 1) * 7));
+    // 출력할 날짜 범위의 마지막 날짜는 오늘 날짜에서 (페이지 번호-1)*7일을 뺀 날입니다.
+    logger.debug({
+      today: '요청데이터가 이번달이다.',
+      startDate: startDate,
+      startDate: formatDate(startDate),
+    });
+
+  } else {
+    startDate = new Date(year, month, 0); // 0:마지막일
+    startDate.setDate(startDate.getDate() - ((page_num - 1) * 7));
+    
+    logger.debug({
+      today: '요청데이터가 이번달이 아니다.',
+      startDate: startDate,
+      startDate: formatDate(startDate),
+    });
+  }
+  logger.debug({
+    today: 'if문 바져나옴',
+    startDate: startDate,
+    startDate: formatDate(startDate),
+    getDate: startDate.getDate(),
+  });
 
   // 출력할 날짜 범위의 첫 날짜는 마지막 날짜에서 6일을 뺀 날입니다.
   let endDate = new Date(startDate);
@@ -975,7 +1009,7 @@ function printDates(page_num) {
   // 시작일과 종료일이 다른 달에 속한다면, 종료일은 시작일이 속한 달의 첫 날이 됩니다.
   nextPage = page_num;
   nextPage++;
-  if (startDate.getMonth() !== endDate.getMonth()) {
+  if (startDate.getMonth() !== endDate.getMonth() || endDate.getDate() == 1) {
     endDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     nextPage = 0; // 다음페이지 없다는 뜻으로 응답하기
   }
@@ -983,6 +1017,7 @@ function printDates(page_num) {
   logger.debug({
     startDate: startDate,
     endDate: endDate,
+    endDategetDate: endDate.getDate(),
     startDategetFullYear: startDate.getFullYear(),
     startDategetMonth: startDate.getMonth(),
     startDategetDay: startDate.getDate(),
