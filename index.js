@@ -37,6 +37,9 @@ fs.readdirSync(__dirname + '/routes/').forEach(function (fileName) {
     }
 });
 
+// 정적 파일 제공 설정 for 이미지
+app.use(express.static('public'));
+
 // html 파일 응답하기
 // url : http://43.202.80.70:3000/
 logger.info('__dirname :', __dirname);
