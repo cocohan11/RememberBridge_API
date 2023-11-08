@@ -350,7 +350,7 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
 })
 
 /** 타임라인 조회 (추억공간 첫 화면) API */
-router.get('/timeline/:dog_id/:year/:month', async (req, res) => {
+router.get('/timeline/:dog_id?/:year?/:month?/:page_num?', async (req, res) => {
 
   // API 정보
   const apiName = '타임라인 조회 API';
@@ -359,7 +359,7 @@ router.get('/timeline/:dog_id/:year/:month', async (req, res) => {
     reqParams: req.params
   });
   // 파라미터값 누락 확인
-  if (!req.params.dog_id|| !req.params.year|| !req.params.month) {
+  if (!req.params.dog_id|| !req.params.year|| !req.params.month|| !req.params.page_num) {
     return resCode.returnResponseCode(res, 1002, apiName, null, null);
   } 
 

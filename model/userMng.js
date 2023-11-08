@@ -1291,7 +1291,7 @@ function queryGetUser(query, apiName) {
     return {
         text: `SELECT *
                 FROM USER
-                WHERE user_email = ?; `, // *로 안 한 이유: pw도 같이 불러와져서
+                WHERE user_email = ?; `,
         params: [query.user_email],
     };
 }

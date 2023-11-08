@@ -675,17 +675,19 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   });
   if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
-
-  // 페이징에 필요한 날짜 추출 (2023-09-01 ~ 2023-09-30)
-  let dates = formattedDate(query.year, query.month);
+  
+  // 함수를 호출하여 결과를 확인합니다.
+  let startAndEndDates = printDates(query.page_num); // 그 다음 7일치 날짜 출력
   logger.debug({
     API: apiName,
-    dates: dates,
+    startAndEndDates: startAndEndDates,
+    printDates시작일: startAndEndDates[0], 
+    printDates종료일: startAndEndDates[1], 
+    printDates다음페이지: startAndEndDates[2], 
   });
 
-
   // 3. DB) 일기 데이터 얻기
-  let diary_info = await mySQLQuery(await selectDiaryInfo(query, dates.startDate, dates.endDate, apiName));
+  let diary_info = await mySQLQuery(await selectDiaryInfo(query, startAndEndDates[1], startAndEndDates[0], apiName));
 
 
   // 변환된 데이터를 저장할 빈 객체
@@ -747,6 +749,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     notice_count,
     dog_info: dog_info,
     diary_info: diaryInfo,
+    nextPage: startAndEndDates[2],
   }; // 원하는 출력 모양을 추가함
 };
 
@@ -955,6 +958,53 @@ spaceMng.prototype.addSpace = async (query, file_location, apiName) => {
 };
 
 //------------------------- 함수 -------------------------
+// 페이지 번호를 인자로 받아 해당 페이지에 해당하는 일주일을 출력하는 함수입니다.
+function printDates(page_num) {
+  // 일단, 오늘 날짜를 2023년 11월 8일로 설정합니다.
+  let today = new Date(2023, 10, 30); // 월은 0부터 시작하므로 11월은 10입니다.
+
+  // 출력할 날짜 범위의 마지막 날짜는 오늘 날짜에서 (페이지 번호-1)*7일을 뺀 날입니다.
+  let startDate = new Date(today);
+  startDate.setDate(today.getDate() - ((page_num - 1) * 7));
+
+  // 출력할 날짜 범위의 첫 날짜는 마지막 날짜에서 6일을 뺀 날입니다.
+  let endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() - 6);
+
+
+  // 시작일과 종료일이 다른 달에 속한다면, 종료일은 시작일이 속한 달의 첫 날이 됩니다.
+  nextPage = page_num;
+  nextPage++;
+  if (startDate.getMonth() !== endDate.getMonth()) {
+    endDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    nextPage = 0; // 다음페이지 없다는 뜻으로 응답하기
+  }
+
+  logger.debug({
+    startDate: startDate,
+    endDate: endDate,
+    startDategetFullYear: startDate.getFullYear(),
+    startDategetMonth: startDate.getMonth(),
+    startDategetDay: startDate.getDate(),
+  });
+
+  // 시작일과 종료일을 문자열 형태로 변환하여 배열에 저장합니다.
+  let dates = [formatDate(startDate), formatDate(endDate), nextPage];
+
+  // 배열에 저장된 날짜들을 콘솔에 출력합니다.
+  return dates
+}
+
+
+
+
+// Date 객체 to 'yyyy-mm-dd' 함수
+function formatDate(date) {
+  let dd = String(date.getDate()).padStart(2, '0');
+  let mm = String(date.getMonth() + 1).padStart(2, '0'); // January is 0!
+  let yyyy = date.getFullYear();
+  return yyyy + '-' + mm + '-' + dd;
+}
 
 // 날짜 문자열 함수
 function formattedDate(year, month, apiName) {
@@ -1273,7 +1323,7 @@ async function selectDiaryInfo(query, startDate, EndDate, apiName) {
                 LEFT JOIN USER AS U ON D.user_id = U.user_id
                 WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? )
                 AND D.select_date >= ? AND D.select_date <= ?
-                ORDER BY D.select_date ASC, D.diary_id ASC;
+                ORDER BY D.select_date DESC, D.diary_id ASC;
             `,
     params: [query.dog_id, startDate, EndDate],
   };

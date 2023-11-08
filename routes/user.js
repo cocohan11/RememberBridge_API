@@ -328,6 +328,7 @@ router.post('/join/sns', async (req, res) => {
     }
 });
 
+
 /** 일반회원탈퇴 API */
 // router.use('/leave', userMngDB.authMiddleware);
 router.post('/leave', async (req, res) => {
