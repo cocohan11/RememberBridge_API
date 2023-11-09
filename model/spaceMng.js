@@ -676,20 +676,41 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   });
   if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
-  
+
   // 함수를 호출하여 결과를 확인합니다.
-  let startAndEndDates = printDates(query.page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
+  let page_num = query.page_num;
+  let startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
   logger.debug({
     API: apiName,
     startAndEndDates: startAndEndDates,
-    printDates시작일: startAndEndDates[0], 
-    printDates종료일: startAndEndDates[1], 
-    printDates다음페이지: startAndEndDates[2], 
+    printDates시작일: startAndEndDates[0],
+    printDates종료일: startAndEndDates[1],
+    printDates다음페이지: startAndEndDates[2],
   });
 
   // 3. DB) 일기 데이터 얻기
   let diary_info = await mySQLQuery(await selectDiaryInfo(query, startAndEndDates[1], startAndEndDates[0], apiName));
+  logger.debug({
+    API: apiName,
+    firstDiary_info: diary_info,
+    diary_infolength: diary_info.length,
+  });
 
+  let stopLoop = false; // for문을 멈출 조건을 나타내는 변수
+  for (let i = 0; !stopLoop; i++) { // diary_info의 길이가 1이면
+
+    if (diary_info.length === 0) { // 일기가 빈값이면 반복적으로 다음페이지 일기 데이터를 얻는다. 
+      logger.debug({
+        diary_infolength: '0개다 반복문으로 일기데이터얻기',
+      });
+      page_num ++;
+      startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
+      diary_info = await mySQLQuery(await selectDiaryInfo(query, startAndEndDates[1], startAndEndDates[0], apiName));
+    } else {
+      stopLoop = true; // diary_info의 길이가 0이 아니면 for문을 멈춘다.
+    }
+
+  }
 
   // 변환된 데이터를 저장할 빈 객체
   const diaryInfo = {};
@@ -980,7 +1001,8 @@ function printDates(page_num, year, month) {
   });
 
 
-  if (today.getFullYear() == year && today.getMonth() + 1 == month) {
+  // 당월
+  if (today.getFullYear() == year && today.getMonth() + 1 == month) { 
     startDate = new Date(today);
     startDate.setDate(today.getDate() - ((page_num - 1) * 7));
     // 출력할 날짜 범위의 마지막 날짜는 오늘 날짜에서 (페이지 번호-1)*7일을 뺀 날입니다.
@@ -990,6 +1012,7 @@ function printDates(page_num, year, month) {
       startDate: formatDate(startDate),
     });
 
+  // 이전월
   } else {
     startDate = new Date(year, month, 0); // 0:마지막일
     startDate.setDate(startDate.getDate() - ((page_num - 1) * 7));
