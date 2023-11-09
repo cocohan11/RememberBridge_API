@@ -50,11 +50,12 @@ spaceMng.prototype.setNoticeToRead = async (query, apiName) => {
  */
 spaceMng.prototype.getNotice = async (query, apiName) => {
 
-  const page = parseInt(query.page, 10);
-  const limit = parseInt(NOTICE_LIMIT, 10);
+  const page = Number(query.page)-1;
+  const limit = Number(NOTICE_LIMIT);
   const offset = limit * page;
   logger.debug({
     API: apiName,
+    NOTICE_LIMIT: NOTICE_LIMIT,
     page: page,
     limit: limit,
     offset: offset,
@@ -744,7 +745,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   // if (Object.keys(diaryInfo).length === 0) {
   //   return 1005;
   // } 
-  // 주석 이유 : 없다고 1005응답하면 빈 기간은 페이징을 못함
+  // 주석 이유 : 7일이상 일기가없으면 페이지가 생성이 안 되는 문제발생
 
   // 4. 안 읽은 알림 갯수 조회
   let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
@@ -1113,20 +1114,27 @@ async function selectCommentInfo(space_id, limit, offset, apiName) {
   logger.debug({
     API: apiName + " 쿼리문 작성",
     space_id: space_id,
+    limit: limit,
+    offset: offset,
     function: "selectCommentInfo()",
   });
 
   return {
-    text: `SELECT C.comment_id, U.user_name, U.user_prof_img, SUBSTRING(C.comment_text, 1, 25) AS comment_text, DATE_FORMAT(C.create_at, '%Y-%m-%d') AS select_date, C.is_read, SUBSTRING(D.diary_content, 1, 25) AS diary_content, D.diary_id
+    text: `SELECT U.user_id, C.comment_id, U.user_name, U.user_prof_img, SUBSTRING(C.comment_text, 1, 25) AS comment_text, DATE_FORMAT(C.create_at, '%Y-%m-%d') AS select_date, C.is_read, SUBSTRING(D.diary_content, 1, 25) AS diary_content, D.diary_id
               FROM COMMENT AS C
               INNER JOIN USER AS U ON C.user_id = U.user_id
               INNER JOIN DIARY as D on C.diary_id = D.diary_id
-              WHERE D.space_id = ?
+              WHERE D.space_id = ? AND U.user_id != (
+                SELECT user_id
+                FROM DIARY
+                WHERE space_id = ?
+                LIMIT 1
+              )
               ORDER BY C.create_at ASC
               LIMIT ? OFFSET ?; 
         `, // LIMIT 20 : 20개씩
            // OFFSET 20 : 시작지점 (0부터)
-    params: [space_id, limit, offset],
+    params: [space_id, space_id, limit, offset],
   };
 }
 
