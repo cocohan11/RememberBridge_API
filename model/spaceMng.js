@@ -696,8 +696,10 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     diary_infolength: diary_info.length,
   });
 
+
   let stopLoop = false; // for문을 멈출 조건을 나타내는 변수
   for (let i = 0; !stopLoop; i++) { // diary_info의 길이가 1이면
+
 
     if (diary_info.length === 0) { // 일기가 빈값이면 반복적으로 다음페이지 일기 데이터를 얻는다. 
       logger.debug({
@@ -706,10 +708,14 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
       page_num ++;
       startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
       diary_info = await mySQLQuery(await selectDiaryInfo(query, startAndEndDates[1], startAndEndDates[0], apiName));
+      if (startAndEndDates[2] === 0) { // 루프문제 해결
+        stopLoop = true; // "nextPage": 0이면 for문을 멈춘다.
+      }
     } else {
       stopLoop = true; // diary_info의 길이가 0이 아니면 for문을 멈춘다.
     }
 
+    
   }
 
   // 변환된 데이터를 저장할 빈 객체
