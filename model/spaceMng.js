@@ -548,7 +548,7 @@ spaceMng.prototype.removeDiary = async (query, apiName) => {
   if (res_delete_url.affectedRows == 0) return 9999; // 삭제실패시 9999 응답
 
   // 2-3) 삭제하기 - S3사진파일
-  const res_delete_s3 = await removeDiaryPhotosFromS3(bucketPathList, apiName);
+  const res_delete_s3 = await S3function.removeDiaryPhotosFromS3(s3, bucketPathList, apiName);
   logger.debug({
     API: apiName,
     res_delete_s3: res_delete_s3,
@@ -715,7 +715,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
       stopLoop = true; // diary_info의 길이가 0이 아니면 for문을 멈춘다.
     }
 
-    
+
   }
 
   // 변환된 데이터를 저장할 빈 객체

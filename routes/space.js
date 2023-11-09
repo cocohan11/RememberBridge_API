@@ -446,7 +446,7 @@ router.get('/diary/delete/:diary_id?', async (req, res) => {
   if (result == 2000) {
     return resCode.returnResponseCode(res, 2000, apiName, null, null); // 성공시 응답받는 곳
   } else {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    return resCode.returnResponseCode(res, result, apiName, null, null);
   }
 
 })

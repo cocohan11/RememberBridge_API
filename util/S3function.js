@@ -81,6 +81,7 @@ S3function.prototype.checkfileExists = async (s3, bucketPathList, bucketPathList
 S3function.prototype.removeDiaryPhotosFromS3 = async (s3, bucketPathList, apiName) => { 
   logger.debug({
     API: apiName,
+    bucketPathList: bucketPathList,
     bucketPathList_length: bucketPathList.length,
     detail: "deleteFiles() 삭제할 파일 갯수",
     function: "removeDiaryPhotosFromS3()",
