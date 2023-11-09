@@ -740,6 +740,10 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
     diaryID = diary_id;
   };
 
+  // diaryInfo가 비어있으면 1005응답하기 (우혁 요청)
+  if (Object.keys(diaryInfo).length === 0) {
+    return 1005;
+  } 
 
   // 4. 안 읽은 알림 갯수 조회
   let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));

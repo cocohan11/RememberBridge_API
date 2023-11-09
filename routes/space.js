@@ -371,10 +371,10 @@ router.get('/timeline/:dog_id?/:year?/:month?/:page_num?', async (req, res) => {
   });
   
   // response
-  if (plusResult != 9999 || plusResult != 1005 || plusResult != undefined) {
+  if (plusResult != 9999 && plusResult != 1005 && plusResult != undefined) {
     return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
   } else {
-    return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    return resCode.returnResponseCode(res, plusResult, apiName, null, null);
   }
 
 })
