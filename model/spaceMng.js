@@ -833,19 +833,14 @@ spaceMng.prototype.setDogImg = async (query, url, apiName) => {
 spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
 
 
-  // 1. DB) DOG 테이블에서 dog_info 리턴
-  let dog_info = await mySQLQuery(await selectDogInfo(query, apiName));
-  logger.debug({
-    API: apiName,
-    dog_info: dog_info,
-  });
-  if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
-
-
   // 숫자로변환
   const year = Number(query.year);
   const month = Number(query.month);
-
+  logger.debug({
+    API: apiName,
+    year: year,
+    month: month,
+  });
 
   // 함수를 호출하여 결과를 확인합니다.
   let nextPage;
@@ -994,6 +989,7 @@ spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
   }; // 원하는 출력 모양을 추가함
 };
 
+
 /** 타임라인 조회1
  */
 spaceMng.prototype.getDateForMonthOnExist = async (query, apiName) => {
@@ -1046,7 +1042,7 @@ spaceMng.prototype.getDateForMonthOnExist = async (query, apiName) => {
       logger.debug(`초기화%%%%%%%%%%%%%`);
     }
 
-    aa = {};
+    aa = {diary_id};
     bb = [];
     bb.push(aa);
     cc = { // 일기 id로 감싸기
@@ -1068,6 +1064,9 @@ spaceMng.prototype.getDateForMonthOnExist = async (query, apiName) => {
     diary_info: diaryInfo,
   }; // 원하는 출력 모양을 추가함
 };
+
+
+
 
 /** 추억공간 배경사진 수정 
    - DOG 테이블에 반려견 배경사진 수정
