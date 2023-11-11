@@ -829,7 +829,86 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   }; // 원하는 출력 모양을 추가함
 };
 
+/** 타임라인 조회
+ * 1. DB) DOG 테이블 조회
+ * 2. DB) USER 테이블 조회
+ * 3. DB) DIARY, DIARY_PHOTO 테이블 조회
+ * 4. 응답값 그룹화 (날짜-일기-일기데이터 순)
+ */
+spaceMng.prototype.getDateForMonthOnExist = async (query, apiName) => {
 
+
+  // 함수를 호출하여 결과를 확인합니다.
+  let day1 = new Date(query.year, query.month-1, '02'); 
+  let day2 = new Date(query.year, query.month, 0); 
+  startDate_day1 = day1.getFullYear() + '-' + String(day1.getMonth() + 1).padStart(2, '0') + '-' + '01';
+  startDate_day2 = day2.getFullYear() + '-' + String(day2.getMonth() + 1).padStart(2, '0') + '-' + day2.getDate();
+
+  logger.debug({
+    API: apiName,
+    day1: day1,
+    day2: day2,
+    startDate_day1: startDate_day1,
+    startDate_day2: startDate_day2,
+  });
+
+  // 3. DB) 일기 데이터 얻기
+  let diary_info = await mySQLQuery(await selectDateInfo(query, startDate_day1, startDate_day2, apiName));
+  logger.debug({
+    API: apiName,
+    diary_info: diary_info,
+    diary_infolength: diary_info.length,
+  });
+
+
+  // 변환된 데이터를 저장할 빈 객체
+  const diaryInfo = {};
+  let arrPhoto = [];
+  let diaryID = 0;
+
+  // diary_info 배열을 순회
+  for (const [index, result] of diary_info.entries()) {
+    const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
+    logger.debug(`${index}`);
+    logger.debug(`${photo_url}`);
+    logger.debug(`${diaryID}`);
+    logger.debug(`${diary_id}`);
+    
+    // 날짜를 가진 객체를 찾거나 만듦
+    if (!diaryInfo[select_date]) {
+      diaryInfo[select_date] = [];
+    }
+    
+    // 재료
+    // 같은 일기가 아니라면
+    if (diaryID != diary_id) {
+      logger.debug(`초기화%%%%%%%%%%%%%`);
+    }
+
+    aa = { 
+      diary_id,
+    };
+    bb = [];
+    bb.push(aa);
+    cc = { // 일기 id로 감싸기
+      [diary_id]: aa
+    }; 
+
+
+    // 날짜 안에 일기 데이터가 없다면
+    if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
+      diaryInfo[select_date].push(cc); // 객체를 통째로 추가
+    } 
+
+    diaryInfo[select_date][0][diary_id] = bb;
+    diaryID = diary_id;
+  };
+
+
+  return {
+    diary_info: diaryInfo,
+  }; // 원하는 출력 모양을 추가함
+};
 
 /** 추억공간 배경사진 수정 
    - DOG 테이블에 반려견 배경사진 수정
@@ -1422,6 +1501,33 @@ async function selectDiaryLike(diaryId, userId, apiName) {
 }
 
 // 일기 데이터 조회 쿼리문 작성
+async function selectDateInfo(query, startDate, EndDate, apiName) {
+  logger.debug(`space_id값 얻은 후 사진조회 쿼리문 작성`);
+  logger.debug("query %o:" + query);
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    startDate: startDate,
+    EndDate: EndDate,
+    function: "selectDateInfo()",
+  });
+
+  return {
+    text: `SELECT D.diary_id, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date
+            FROM DIARY AS D
+            LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+            LEFT JOIN USER AS U ON D.user_id = U.user_id
+            WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? )
+            AND D.select_date >= ? AND D.select_date <= ?
+            ORDER BY D.select_date DESC, D.diary_id ASC
+            `,
+    params: [query.dog_id, startDate, EndDate],
+  };
+}
+
+
+
+// 일기 데이터 조회 쿼리문 작성
 async function selectDiaryInfo(query, startDate, EndDate, apiName) {
   logger.debug(`space_id값 얻은 후 사진조회 쿼리문 작성`);
   logger.debug("query %o:" + query);
@@ -1438,12 +1544,12 @@ async function selectDiaryInfo(query, startDate, EndDate, apiName) {
             FROM DIARY AS D
             LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
             LEFT JOIN USER AS U ON D.user_id = U.user_id
-            WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = 81 )
-            AND D.select_date >= '2023-11-01' AND D.select_date <= '2023-11-30'
+            WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? )
+            AND D.select_date >= ? AND D.select_date <= ?
             ORDER BY D.select_date DESC, D.diary_id ASC
             LIMIT 2 OFFSET 2
             `,
-    // params: [query.dog_id, startDate, EndDate],
+    params: [query.dog_id, startDate, EndDate],
   };
 }
 
