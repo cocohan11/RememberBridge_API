@@ -728,7 +728,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
       startDate_day1: startDate_day1,
       stopLoop: stopLoop,
     });
-    if (임시startAndEndDates[2] === 0) { // 루프문제 해결
+    if (임시startAndEndDates[2] === 0 || 임시info.length != 0) { // 루프문제 해결
       stopLoop = true; // "nextPage": 0이면 for문을 멈춘다.
     }
   }
@@ -743,6 +743,11 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
       nextPage = startAndEndDates[2]
       logger.debug(9993);
     }
+
+    if (임시startAndEndDates[1] == startDate_day1) {
+      nextPage = 0;
+      logger.debug(9995);
+    } 
   } else {
     diary_info = 임시info;
 
@@ -1161,9 +1166,15 @@ async function selectUnreadNoticeCount(space_id, apiName) {
     text: `SELECT COUNT(*) AS count
             FROM COMMENT AS C
             INNER JOIN DIARY as D on C.diary_id = D.diary_id
-            WHERE D.space_id = ? and C.is_read = false;
+            INNER JOIN USER AS U ON C.user_id = U.user_id
+            WHERE D.space_id = ? and C.is_read = false AND U.user_id != (
+                SELECT user_id
+                FROM DIARY
+                WHERE space_id = ?
+                LIMIT 1
+              )
         `,
-    params: [space_id],
+    params: [space_id, space_id],
   };
 }
 
@@ -1424,14 +1435,15 @@ async function selectDiaryInfo(query, startDate, EndDate, apiName) {
 
   return {
     text: `SELECT D.diary_id, D.diary_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date, U.user_name, U.user_prof_img 
-                FROM DIARY AS D
-                LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
-                LEFT JOIN USER AS U ON D.user_id = U.user_id
-                WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? )
-                AND D.select_date >= ? AND D.select_date <= ?
-                ORDER BY D.select_date DESC, D.diary_id ASC;
+            FROM DIARY AS D
+            LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+            LEFT JOIN USER AS U ON D.user_id = U.user_id
+            WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = 81 )
+            AND D.select_date >= '2023-11-01' AND D.select_date <= '2023-11-30'
+            ORDER BY D.select_date DESC, D.diary_id ASC
+            LIMIT 2 OFFSET 2
             `,
-    params: [query.dog_id, startDate, EndDate],
+    // params: [query.dog_id, startDate, EndDate],
   };
 }
 
