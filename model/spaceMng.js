@@ -680,12 +680,16 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   // 함수를 호출하여 결과를 확인합니다.
   let page_num = query.page_num;
   let startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
+  let day1 = new Date(query.year, query.month-1, '02'); 
+  startDate_day1 = day1.getFullYear() + '-' + String(day1.getMonth() + 1).padStart(2, '0') + '-' + '01';
+
   logger.debug({
     API: apiName,
     startAndEndDates: startAndEndDates,
     printDates시작일: startAndEndDates[0],
     printDates종료일: startAndEndDates[1],
     printDates다음페이지: startAndEndDates[2],
+    startDate_day1: startDate_day1,
   });
 
   // 3. DB) 일기 데이터 얻기
@@ -700,17 +704,17 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   let stopLoop = false; // for문을 멈출 조건을 나타내는 변수
   for (let i = 0; !stopLoop; i++) { // diary_info의 길이가 1이면
 
+    page_num ++;
+    startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
+    let info = await mySQLQuery(await selectDiaryInfo(query, startAndEndDates[1], startAndEndDates[0], apiName));
+    if (startAndEndDates[2] === 0) { // 루프문제 해결
+      stopLoop = true; // "nextPage": 0이면 for문을 멈춘다.
+    }
 
-    if (diary_info.length === 0) { // 일기가 빈값이면 반복적으로 다음페이지 일기 데이터를 얻는다. 
+    if (info.length === 0 && startAndEndDates[1] != startDate_day1) { // 일기가 빈값이면 반복적으로 다음페이지 일기 데이터를 얻는다. 
       logger.debug({
-        diary_infolength: '0개다 반복문으로 일기데이터얻기',
+        infolength: '0개다 반복문으로 일기데이터얻기',
       });
-      page_num ++;
-      startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
-      diary_info = await mySQLQuery(await selectDiaryInfo(query, startAndEndDates[1], startAndEndDates[0], apiName));
-      if (startAndEndDates[2] === 0) { // 루프문제 해결
-        stopLoop = true; // "nextPage": 0이면 for문을 멈춘다.
-      }
     } else {
       stopLoop = true; // diary_info의 길이가 0이 아니면 for문을 멈춘다.
     }
@@ -1048,15 +1052,6 @@ function printDates(page_num, year, month) {
     endDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     nextPage = 0; // 다음페이지 없다는 뜻으로 응답하기
   }
-
-  logger.debug({
-    startDate: startDate,
-    endDate: endDate,
-    endDategetDate: endDate.getDate(),
-    startDategetFullYear: startDate.getFullYear(),
-    startDategetMonth: startDate.getMonth(),
-    startDategetDay: startDate.getDate(),
-  });
 
   // 시작일과 종료일을 문자열 형태로 변환하여 배열에 저장합니다.
   let dates = [formatDate(startDate), formatDate(endDate), nextPage];
@@ -1643,7 +1638,7 @@ async function selectDog(dog_id, apiName) {
   });
 
   return {
-    text: `SELECT dog_name, dog_breed, dog_sex, dog_prof_img, DATE_FORMAT(dog_birth, '%Y-%m-%d') AS dog_birth
+    text: `SELECT dog_name, dog_breed, dog_sex, dog_prof_img, dog_bkg_img, DATE_FORMAT(dog_birth, '%Y-%m-%d') AS dog_birth
                 FROM DOG
                 WHERE dog_id = ? `,
     params: [dog_id],
