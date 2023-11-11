@@ -41,7 +41,7 @@ spaceMng.prototype.setNoticeToRead = async (query, apiName) => {
 
   // 읽음처리 or 이미읽은 댓글
   if (res.changedRows == 1) return 2000; // 1개 레코드 수정됐으면 읽음처리 성공
-  if (res.affectedRows == 1) return 2009; // 이미 읽은 댓글임
+  if (res.changedRows == 0) return 2009; // 이미 읽은 댓글임
   else return 9999;
 
 };
@@ -61,16 +61,21 @@ spaceMng.prototype.getNotice = async (query, apiName) => {
     offset: offset,
   });
 
+  // 안 읽은 알림 갯수 조회
+  let count = await mySQLQuery(await selectUnreadNoticeCount(query.space_id, apiName));
+  const notice_count = count[0].count;
   
   let commet_info = await mySQLQuery(await selectCommentInfo(query.space_id, limit, offset, apiName));
   logger.debug({
     API: apiName,
+    notice_count,
     commet_info: commet_info,
   });
   if (!commet_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
   
   return {
+    notice_count,
     commet_info : commet_info
   }
 };
@@ -1127,7 +1132,7 @@ async function selectUnreadNoticeCount(space_id, apiName) {
     text: `SELECT COUNT(*) AS count
             FROM COMMENT AS C
             INNER JOIN DIARY as D on C.diary_id = D.diary_id
-            WHERE D.space_id = ? and C.is_read = true;
+            WHERE D.space_id = ? and C.is_read = false;
         `,
     params: [space_id],
   };

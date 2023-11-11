@@ -235,10 +235,10 @@ router.post('/timeline/notice', async (req, res) => {
 
   // response
   if (result == 2000) {
-    plusResult = { isRead: 'alreadyRead' }; // 원하는 출력 모양을 추가함
+    plusResult = { isRead: 'readNow' }; // 갓 변경
     return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
   } else if (result == 2009) {
-    plusResult = { isRead : 'readNow' }; // 원하는 출력 모양을 추가함
+    plusResult = { isRead : 'alreadyRead' }; // 이미 읽은 알림임
     return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
   } else {
     return resCode.returnResponseCode(res, result, apiName, null, null);
