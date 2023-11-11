@@ -72,8 +72,6 @@ spaceMng.prototype.getNotice = async (query, apiName) => {
     commet_info: commet_info,
   });
   if (!commet_info) return 1005; // 조회된 데이터가 없으면 1005 응답
-
-  
   return {
     notice_count,
     commet_info : commet_info
@@ -666,13 +664,175 @@ spaceMng.prototype.setDogImg = async (query, url, apiName) => {
   }
 };
 
+/** 타임라인 조회2
+*/
+// spaceMng.prototype.getTimeline = async (query, apiName) => {
+//   // 1. DB) DOG 테이블에서 dog_info 리턴
+//   let dog_info = await mySQLQuery(await selectDogInfo(query, apiName));
+//   logger.debug({
+//     API: apiName,
+//     dog_info: dog_info,
+//   });
+//   if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+
+//   // 함수를 호출하여 결과를 확인합니다.
+//   let nextPage;
+//   let page_num = query.page_num;
+//   let startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
+//   let day1 = new Date(query.year, query.month-1, '02'); 
+//   startDate_day1 = day1.getFullYear() + '-' + String(day1.getMonth() + 1).padStart(2, '0') + '-' + '01';
+
+//   logger.debug({
+//     API: apiName,
+//     startAndEndDates: startAndEndDates,
+//     printDates시작일: startAndEndDates[0],
+//     printDates종료일: startAndEndDates[1],
+//     printDates다음페이지: startAndEndDates[2],
+//     startDate_day1: startDate_day1,
+//   });
+
+//   // 3. DB) 일기 데이터 얻기
+//   let diary_info = await mySQLQuery(await selectDiaryInfo(query, startAndEndDates[1], startAndEndDates[0], apiName));
+//   logger.debug({
+//     API: apiName,
+//     firstDiary_info: diary_info,
+//     diary_infolength: diary_info.length,
+//   });
+
+
+//   // 1일까지 반복문 돌리기
+//   let stopLoop = false; // for문을 멈출 조건을 나타내는 변수
+//   for (let i = 0; !stopLoop; i++) { // diary_info의 길이가 1이면
+//     // 일기값이 있으면 
+//       // 그 일기값 리턴
+//       // nextpage 조회
+//     // 없으면 
+//       // info 임시일기값 리턴
+//       // nextpage 조회
+//     page_num ++;
+//     임시startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
+//     임시info = await mySQLQuery(await selectDiaryInfo(query, 임시startAndEndDates[1], 임시startAndEndDates[0], apiName));
+//     logger.debug({
+//       for문i: i,
+//       일기: 임시info,
+//       일기length: 임시info.length,
+//       임시startAndEndDates1: 임시startAndEndDates[1],
+//       임시startAndEndDates0: 임시startAndEndDates[0],
+//       startDate_day1: startDate_day1,
+//       stopLoop: stopLoop,
+//     });
+//     if (임시startAndEndDates[2] === 0 || 임시info.length != 0) { // 루프문제 해결
+//       stopLoop = true; // "nextPage": 0이면 for문을 멈춘다.
+//     }
+//   }
+
+
+//   // 일기데이터가 있으면 그 데이터 응답, nextpage 조회
+//   if (diary_info.length != 0) {
+//     if (임시info.length === 0) {
+//       nextPage = 0;
+//       logger.debug(9994);
+//     } else {
+//       nextPage = startAndEndDates[2]
+//       logger.debug(9993);
+//     }
+
+//     if (임시startAndEndDates[1] == startDate_day1) {
+//       nextPage = 0;
+//       logger.debug(9995);
+//     } 
+//   } else {
+//     diary_info = 임시info;
+
+//     if (임시startAndEndDates[1] == startDate_day1) {
+//       nextPage = 0;
+//       logger.debug(9992);
+//     } else {
+//       nextPage = startAndEndDates[2]
+//       logger.debug(9991);
+//     }
+//   }
+
+
+//   // 변환된 데이터를 저장할 빈 객체
+//   const diaryInfo = {};
+//   let arrPhoto = [];
+//   let diaryID = 0;
+
+//   // diary_info 배열을 순회
+//   for (const [index, result] of diary_info.entries()) {
+//     const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
+//     logger.debug(`${index}`);
+//     logger.debug(`${photo_url}`);
+//     logger.debug(`${diaryID}`);
+//     logger.debug(`${diary_id}`);
+    
+//     // 날짜를 가진 객체를 찾거나 만듦
+//     if (!diaryInfo[select_date]) {
+//       diaryInfo[select_date] = [];
+//     }
+    
+//     // 재료
+//     // 같은 일기가 아니라면
+//     if (diaryID != diary_id) {
+//       logger.debug(`초기화%%%%%%%%%%%%%`);
+//       arrPhoto = [];
+//     }
+//     arrPhoto.push(photo_url);
+//     logger.debug(`*********arrPhoto : ${arrPhoto}`);
+
+//     aa = { 
+//       user_name,
+//       user_prof_img,
+//       diary_content,
+//       photos : [], // 사진만 배열로 만들기 (제일 작은 단위)
+//     };
+//     bb = [];
+//     bb.push(aa);
+//     cc = { // 일기 id로 감싸기
+//       [diary_id]: aa
+//     }; 
+
+
+//     // 날짜 안에 일기 데이터가 없다면
+//     if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
+//       diaryInfo[select_date].push(cc); // 객체를 통째로 추가
+//     } 
+
+//     diaryInfo[select_date][0][diary_id] = bb;
+//     diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
+//     diaryID = diary_id;
+//   };
+
+//   // // diaryInfo가 비어있으면 1005응답하기 (우혁 요청)
+//   // if (Object.keys(diaryInfo).length === 0) {
+//   //   return 1005;
+//   // } 
+//   // 주석 이유 : 7일이상 일기가없으면 페이지가 생성이 안 되는 문제발생
+
+//   // 4. 안 읽은 알림 갯수 조회
+//   let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
+//   const notice_count = count[0].count;
+
+//   return {
+//     notice_count,
+//     dog_info: dog_info,
+//     diary_info: diaryInfo,
+//     nextPage: nextPage,
+//   }; // 원하는 출력 모양을 추가함
+// };
+
+
 /** 타임라인 조회
  * 1. DB) DOG 테이블 조회
  * 2. DB) USER 테이블 조회
  * 3. DB) DIARY, DIARY_PHOTO 테이블 조회
  * 4. 응답값 그룹화 (날짜-일기-일기데이터 순)
  */
-spaceMng.prototype.getTimeline = async (query, apiName) => {
+spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
+
+
   // 1. DB) DOG 테이블에서 dog_info 리턴
   let dog_info = await mySQLQuery(await selectDogInfo(query, apiName));
   logger.debug({
@@ -682,11 +842,16 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
 
+  // 숫자로변환
+  const year = Number(query.year);
+  const month = Number(query.month);
+
+
   // 함수를 호출하여 결과를 확인합니다.
   let nextPage;
   let page_num = query.page_num;
-  let startAndEndDates = printDates(page_num, query.year, query.month); // 그 다음 7일치 날짜 출력
-  let day1 = new Date(query.year, query.month-1, '02'); 
+  let startAndEndDates = printDates(page_num, year, month); // 그 다음 7일치 날짜 출력
+  let day1 = new Date(year, month-1, '02'); 
   startDate_day1 = day1.getFullYear() + '-' + String(day1.getMonth() + 1).padStart(2, '0') + '-' + '01';
 
   logger.debug({
@@ -829,11 +994,7 @@ spaceMng.prototype.getTimeline = async (query, apiName) => {
   }; // 원하는 출력 모양을 추가함
 };
 
-/** 타임라인 조회
- * 1. DB) DOG 테이블 조회
- * 2. DB) USER 테이블 조회
- * 3. DB) DIARY, DIARY_PHOTO 테이블 조회
- * 4. 응답값 그룹화 (날짜-일기-일기데이터 순)
+/** 타임라인 조회1
  */
 spaceMng.prototype.getDateForMonthOnExist = async (query, apiName) => {
 
@@ -885,9 +1046,7 @@ spaceMng.prototype.getDateForMonthOnExist = async (query, apiName) => {
       logger.debug(`초기화%%%%%%%%%%%%%`);
     }
 
-    aa = { 
-      diary_id,
-    };
+    aa = {};
     bb = [];
     bb.push(aa);
     cc = { // 일기 id로 감싸기
@@ -1268,7 +1427,9 @@ async function selectCommentInfo(space_id, limit, offset, apiName) {
   });
 
   return {
-    text: `SELECT U.user_id, C.comment_id, U.user_name, U.user_prof_img, SUBSTRING(C.comment_text, 1, 25) AS comment_text, DATE_FORMAT(C.create_at, '%Y-%m-%d') AS select_date, C.is_read, SUBSTRING(D.diary_content, 1, 25) AS diary_content, D.diary_id
+    text: `SELECT U.user_id, C.comment_id, U.user_name, U.user_prof_img, SUBSTRING(C.comment_text, 1, 25) AS comment_text, DATE_FORMAT(C.create_at, '%Y-%m-%d') AS select_date, 
+    CASE WHEN C.is_read = 1 THEN 'true' ELSE 'false' END AS is_read,
+    SUBSTRING(D.diary_content, 1, 25) AS diary_content, D.diary_id
               FROM COMMENT AS C
               INNER JOIN USER AS U ON C.user_id = U.user_id
               INNER JOIN DIARY as D on C.diary_id = D.diary_id
@@ -1525,7 +1686,31 @@ async function selectDateInfo(query, startDate, EndDate, apiName) {
   };
 }
 
+// 일기 데이터 조회 쿼리문 작성
+async function selectDiaryInfoForPaging(query, startDate, EndDate, apiName) {
+  logger.debug(`space_id값 얻은 후 사진조회 쿼리문 작성`);
+  logger.debug("query %o:" + query);
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    startDate: startDate,
+    EndDate: EndDate,
+    function: "selectDiaryInfo()",
+  });
 
+  return {
+    text: `SELECT D.diary_id, D.diary_content, P.photo_url, DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date, U.user_name, U.user_prof_img 
+            FROM DIARY AS D
+            LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+            LEFT JOIN USER AS U ON D.user_id = U.user_id
+            WHERE D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ? )
+            AND D.select_date >= ? AND D.select_date <= ?
+            ORDER BY D.select_date DESC, D.diary_id ASC
+            LIMIT 2 OFFSET 2
+            `,
+    params: [query.dog_id, startDate, EndDate],
+  };
+}
 
 // 일기 데이터 조회 쿼리문 작성
 async function selectDiaryInfo(query, startDate, EndDate, apiName) {
