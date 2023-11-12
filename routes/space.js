@@ -380,8 +380,8 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
 // })
 
 
-/** 타임라인 조회 -  API */
-router.get('/timeline/new', async (req, res) => {
+/** 타임라인 조회 - 위아래 10개 조회 API */
+router.get('/timeline/page', async (req, res) => {
 
   // API 정보
   const apiName = '타임라인 조회 API';
@@ -390,7 +390,7 @@ router.get('/timeline/new', async (req, res) => {
     reqQuery: req.query
   });
   // 파라미터값 누락 확인
-  if (!req.query.dog_id|| !req.query.diary_id|| !req.query.year|| !req.query.month|| !req.query.up_down) {
+  if (!req.query.dog_id|| !req.query.page_num|| !req.query.year|| !req.query.month|| !req.query.up_down) {
     return resCode.returnResponseCode(res, 1002, apiName, null, null);
   } 
 
