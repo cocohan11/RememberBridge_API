@@ -224,6 +224,18 @@ router.post('/timeline/notice', async (req, res) => {
         return resCode.returnResponseCode(res, result, apiName, null, null);
     }
 });
+  // response
+  if (result == 2000) {
+    plusResult = { isRead: true }; // 갓 변경
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else if (result == 2009) {
+    plusResult = { isRead : false }; // 이미 읽은 알림임
+    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+  } else {
+    return resCode.returnResponseCode(res, result, apiName, null, null);
+  }
+
+})
 
 /** 타임라인 알림 상세 조회 (댓글) API */
 router.get('/timeline/notice/:space_id?/:page?', async (req, res) => {
