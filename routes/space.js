@@ -215,27 +215,15 @@ router.post('/timeline/notice', async (req, res) => {
 
     // response
     if (result == 2000) {
-        plusResult = { isRead: 'readNow' }; // 갓 변경
-        return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+      plusResult = { isRead: true }; // 갓 변경
+      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
     } else if (result == 2009) {
-        plusResult = { isRead: 'alreadyRead' }; // 이미 읽은 알림임
-        return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+      plusResult = { isRead : false }; // 이미 읽은 알림임
+      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
     } else {
-        return resCode.returnResponseCode(res, result, apiName, null, null);
+      return resCode.returnResponseCode(res, result, apiName, null, null);
     }
 });
-  // response
-  if (result == 2000) {
-    plusResult = { isRead: true }; // 갓 변경
-    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
-  } else if (result == 2009) {
-    plusResult = { isRead : false }; // 이미 읽은 알림임
-    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
-  } else {
-    return resCode.returnResponseCode(res, result, apiName, null, null);
-  }
-
-})
 
 /** 타임라인 알림 상세 조회 (댓글) API */
 router.get('/timeline/notice/:space_id?/:page?', async (req, res) => {
@@ -368,6 +356,8 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
 // })
 
 
+
+
 /** 타임라인 조회 - 포인터로 위아래5개씩 API */
 router.get('/timeline/page', async (req, res) => {
 
@@ -455,6 +445,8 @@ router.get('/timeline/date/:dog_id?/:year?/:month?', async (req, res) => {
         return resCode.returnResponseCode(res, plusResult, apiName, null, null);
     }
 });
+
+
 
 /** 일기 수정 API */
 router.post('/diary/edit', uploadForTimelines.array('diary_imgs', 5), async (req, res) => {
