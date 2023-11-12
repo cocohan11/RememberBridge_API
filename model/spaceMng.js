@@ -824,11 +824,122 @@ spaceMng.prototype.setDogImg = async (query, url, apiName) => {
 // };
 
 
-/** 타임라인 조회
- * 1. DB) DOG 테이블 조회
- * 2. DB) USER 테이블 조회
- * 3. DB) DIARY, DIARY_PHOTO 테이블 조회
- * 4. 응답값 그룹화 (날짜-일기-일기데이터 순)
+/** 타임라인 조회 3
+ */
+// spaceMng.prototype.getTimelineForUp = async (query, apiName) => {
+
+
+//   // 숫자로변환
+//   const year = Number(query.year);
+//   const month = Number(query.month);
+//   let page_num = Number(query.page_num);
+//   logger.debug({
+//     API: apiName,
+//     yearrr: year,
+//     monthhh: month,
+//     page_num: page_num,
+//   });
+
+//   // 함수를 호출하여 결과를 확인합니다.
+//   let day1 = new Date(query.year, query.month-1, '02'); 
+//   let day2 = new Date(query.year, query.month, 0); 
+//   startDate_day1 = day1.getFullYear() + '-' + String(day1.getMonth() + 1).padStart(2, '0') + '-' + '01';
+//   startDate_day2 = day2.getFullYear() + '-' + String(day2.getMonth() + 1).padStart(2, '0') + '-' + day2.getDate();
+
+//   logger.debug({
+//     API: apiName,
+//     startDate_day1: startDate_day1,
+//     startDate_day2: startDate_day2,
+//   });
+
+//   // 3. DB) 일기 데이터 얻기
+//   let diary_info = await mySQLQuery(await selectDiaryInfo(query,startDate_day1, startDate_day2, apiName));
+//   logger.debug({
+//     API: apiName,
+//     firstDiary_info: diary_info,
+//     diary_infolength: diary_info.length,
+//   });
+
+
+//   // 실제 응답할 데이터 x
+//   let diary_info_nextPage = await mySQLQuery(await selectDiaryInfo(query,startDate_day1, startDate_day2, apiName));
+//   logger.debug({
+//     API: apiName,
+//     firstDiary_info: diary_info_nextPage,
+//     diary_infolength: diary_info_nextPage.length,
+//   });
+//   if (diary_info_nextPage.length === 0) {
+//     page_num = 0;
+//   } else {
+//     page_num = page_num + 1;
+//   }
+
+
+//   // 변환된 데이터를 저장할 빈 객체
+//   const diaryInfo = {};
+//   let arrPhoto = [];
+//   let diaryID = 0;
+
+//   // diary_info 배열을 순회
+//   for (const [index, result] of diary_info.entries()) {
+//     const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
+//     logger.debug(`${index}`);
+//     logger.debug(`${photo_url}`);
+//     logger.debug(`${diaryID}`);
+//     logger.debug(`${diary_id}`);
+    
+//     // 날짜를 가진 객체를 찾거나 만듦
+//     if (!diaryInfo[select_date]) {
+//       diaryInfo[select_date] = [];
+//     }
+    
+//     // 재료
+//     // 같은 일기가 아니라면
+//     if (diaryID != diary_id) {
+//       logger.debug(`초기화%%%%%%%%%%%%%`);
+//       arrPhoto = [];
+//     }
+//     arrPhoto.push(photo_url);
+//     logger.debug(`*********arrPhoto : ${arrPhoto}`);
+
+//     aa = { 
+//       user_name,
+//       user_prof_img,
+//       diary_content,
+//       photos : [], // 사진만 배열로 만들기 (제일 작은 단위)
+//     };
+//     bb = [];
+//     bb.push(aa);
+//     cc = { // 일기 id로 감싸기
+//       [diary_id]: aa
+//     }; 
+
+
+//     // 날짜 안에 일기 데이터가 없다면
+//     if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
+//       diaryInfo[select_date].push(cc); // 객체를 통째로 추가
+//     } 
+
+//     diaryInfo[select_date][0][diary_id] = bb;
+//     diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
+//     diaryID = diary_id;
+//   };
+
+
+//   // 4. 안 읽은 알림 갯수 조회
+//   let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
+//   const notice_count = count[0].count;
+
+//   return {
+//     notice_count,
+//     dog_info: dog_info,
+//     diary_info: diaryInfo,
+//     nextPage: page_num,
+//   }; // 원하는 출력 모양을 추가함
+// };
+
+
+/** 타임라인 조회 - 포인터로 해당데이터 + 위아래데이터 가져오기
  */
 spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
 
@@ -845,12 +956,12 @@ spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
   // 숫자로변환
   const year = Number(query.year);
   const month = Number(query.month);
-  let page_num = Number(query.page_num);
+  const diary_id = Number(query.diary_id);
   logger.debug({
     API: apiName,
     yearrr: year,
     monthhh: month,
-    page_num: page_num,
+    diary_id: diary_id,
   });
 
   // 함수를 호출하여 결과를 확인합니다.
@@ -866,26 +977,55 @@ spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
   });
 
   // 3. DB) 일기 데이터 얻기
-  let diary_info = await mySQLQuery(await selectDiaryInfo(query, page_num, startDate_day1, startDate_day2, apiName));
+  let origin_diary_info = await mySQLQuery(await selectDiaryInfo(query, startDate_day1, startDate_day2, apiName));
   logger.debug({
     API: apiName,
-    firstDiary_info: diary_info,
-    diary_infolength: diary_info.length,
+    firstDiary_info: origin_diary_info,
+    diary_infolength: origin_diary_info.length,
+    diary_infolength000: origin_diary_info[origin_diary_info.length-1].diary_id, // 194
   });
+
+
+  const limit = Number(TIMELINE_LIMIT) // 5
+  let startIdx;
+  let endIdx;
+  for (let i = 0; i < origin_diary_info.length; i++) {
+    const diary = origin_diary_info[i];
+    logger.debug(i)
+    logger.debug(diary.diary_id)
+    
+    if (diary.diary_id == query.diary_id) {
+      logger.debug('slice')
+      startIdx = i - limit;
+      endIdx = i + limit;
+      if (startIdx < 0) startIdx = 0;
+      if (endIdx > origin_diary_info.length) endIdx = origin_diary_info.length;
+      diary_info = origin_diary_info.slice(startIdx, endIdx);
+      i = origin_diary_info.length + 1; // 탈출
+    }
+  }
 
 
   // 실제 응답할 데이터 x
-  let diary_info_nextPage = await mySQLQuery(await selectDiaryInfo(query, page_num+1, startDate_day1, startDate_day2, apiName));
+  let nextPageDown = 0;
+  let nextPageUp = 0;
+  if (startIdx != 0) {
+    nextPageUp = 1
+  } 
+  if (endIdx != origin_diary_info.length) {
+    nextPageDown = 1
+  } 
   logger.debug({
     API: apiName,
-    firstDiary_info: diary_info_nextPage,
-    diary_infolength: diary_info_nextPage.length,
+    startIdx: startIdx,
+    endIdx: endIdx,
+    origin_diary_infolength: origin_diary_info.length,
+    infostartIdx: origin_diary_info[startIdx],
+    infoendIdx: origin_diary_info[endIdx],
+    nextPageDown: nextPageDown, // 194
+    nextPageUp: nextPageUp, // 194
   });
-  if (diary_info_nextPage.length === 0) {
-    page_num = 0;
-  } else {
-    page_num = page_num + 1;
-  }
+
 
 
   // 변환된 데이터를 저장할 빈 객체
@@ -912,7 +1052,7 @@ spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
       logger.debug(`초기화%%%%%%%%%%%%%`);
       arrPhoto = [];
     }
-    arrPhoto.push(photo_url);
+    // arrPhoto.push(photo_url);
     logger.debug(`*********arrPhoto : ${arrPhoto}`);
 
     aa = { 
@@ -946,8 +1086,9 @@ spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
   return {
     notice_count,
     dog_info: dog_info,
-    diary_info: diaryInfo,
-    nextPage: page_num,
+    diary_info: diary_info,
+    nextPageUp: nextPageUp,
+    nextPageDown: nextPageDown,
   }; // 원하는 출력 모양을 추가함
 };
 
@@ -1674,10 +1815,7 @@ async function selectDiaryInfoForPaging(query, startDate, EndDate, apiName) {
 }
 
 // 일기 데이터 조회 쿼리문 작성
-async function selectDiaryInfo(query, page, startDate, EndDate, apiName) {
-  const page_num = Number(page)-1;
-  const limit = Number(TIMELINE_LIMIT);
-  let offset = limit * page_num;
+async function selectDiaryInfo(query, startDate, EndDate, apiName) {
   logger.debug(`space_id값 얻은 후 사진조회 쿼리문 작성`);
   logger.debug("query %o:" + query);
   logger.debug({
@@ -1685,35 +1823,85 @@ async function selectDiaryInfo(query, page, startDate, EndDate, apiName) {
     params: query,
     startDate: startDate,
     EndDate: EndDate,
-    page_num: page_num,
-    limit: limit,
-    offset: offset,
     function: "selectDiaryInfo()",
   });
 
   return {
-    text: `SELECT
-              D.diary_id,
-              D.diary_content,
-              P.photo_url,
-              DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date,
-              U.user_name,
-              U.user_prof_img
-          FROM
-              DIARY AS D
-              LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
-              LEFT JOIN USER AS U ON D.user_id = U.user_id
-          WHERE
-              D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ?)
-              AND D.select_date >= ? AND D.select_date <= ?
-          ORDER BY
-              D.select_date DESC
-          LIMIT ? OFFSET ?;
-
+    text: `SELECT		  
+                D.diary_id,
+                D.diary_content,
+                P.photo_url,
+                DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date,
+                D.create_at,
+                U.user_name,
+                U.user_prof_img
+            FROM
+                DIARY AS D
+                LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+                LEFT JOIN USER AS U ON D.user_id = U.user_id
+            WHERE
+                D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ?)
+                AND D.select_date >= ?
+                AND D.select_date <= ?
+            ORDER BY
+                D.select_date DESC, D.create_at DESC
+            ;
             `,
-    params: [query.dog_id, startDate, EndDate, limit, offset],
+    params: [query.dog_id, startDate, EndDate],
   };
+
+  // return {
+  //   text: `SELECT		  
+  //               D.diary_id,
+  //               D.diary_content,
+  //               P.photo_url,
+  //               DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date,
+  //               D.create_at,
+  //               U.user_name,
+  //               U.user_prof_img
+  //           FROM
+  //               DIARY AS D
+  //               LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+  //               LEFT JOIN USER AS U ON D.user_id = U.user_id
+  //           WHERE
+  //               D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ?)
+  //               AND D.select_date >= ?
+  //               AND D.select_date <= ?
+  //               AND D.select_date ${up_down} (SELECT select_date FROM DIARY WHERE diary_id = ?)
+  //           ORDER BY
+  //               D.select_date DESC, D.create_at ASC
+  //           LIMIT ?;
+  //           `,
+  //   params: [query.dog_id, startDate, EndDate, diary_id, limit],
+  // };
+
+
+  // return {
+  //   text: `SELECT		  
+  //           ROW_NUMBER() OVER (ORDER BY select_date, create_at) AS increase_idx,
+  //                 D.diary_id,
+  //                 D.diary_content,
+  //                 P.photo_url,
+  //                 D.select_date, D.create_at,
+  //                 U.user_name,
+  //                 U.user_prof_img
+  //             FROM
+  //                 DIARY AS D
+  //                 LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+  //                 LEFT JOIN USER AS U ON D.user_id = U.user_id
+  //             WHERE
+  //                 D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = 81)
+  //                 AND D.select_date >= ? AND D.select_date <= ?
+  //                 AND D.diary_id
+  //             ORDER BY
+  //                 D.select_date DESC, D.create_at DESC
+  //             LIMIT ? OFFSET ?;
+  //           `,
+  //   params: [query.dog_id, startDate, EndDate, limit, offset],
+  // };
 }
+
+
 
 // 타임라인 조회 쿼리문 작성 (추억공간 top 화면)
 async function selectDogInfo(query, apiName) {
