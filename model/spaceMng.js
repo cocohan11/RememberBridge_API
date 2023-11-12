@@ -833,6 +833,15 @@ spaceMng.prototype.setDogImg = async (query, url, apiName) => {
 spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
 
 
+  // 1. DB) DOG 테이블에서 dog_info 리턴
+  let dog_info = await mySQLQuery(await selectDogInfo(query, apiName));
+  logger.debug({
+    API: apiName,
+    dog_info: dog_info,
+  });
+  if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+  
   // 숫자로변환
   const year = Number(query.year);
   const month = Number(query.month);
@@ -936,7 +945,7 @@ spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
 
   return {
     notice_count,
-    // dog_info: dog_info,
+    dog_info: dog_info,
     diary_info: diaryInfo,
     nextPage: page_num,
   }; // 원하는 출력 모양을 추가함
