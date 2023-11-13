@@ -424,15 +424,15 @@ router.get('/timeline/date/:dog_id?/:year?/:month?', async (req, res) => {
     const apiName = '타임라인 조회 - 일기가 존재하는 한달날짜 조회 API';
     logger.http({
         API: apiName,
-        reqParams: req.params,
+        reqParams: req.query,
     });
     // 파라미터값 누락 확인
-    if (!req.params.dog_id || !req.params.year || !req.params.month) {
+    if (!req.query.dog_id || !req.query.year || !req.query.month) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
     // DB
-    const plusResult = await spaceMngDB.getDateForMonthOnExist(req.params, apiName);
+    const plusResult = await spaceMngDB.getDateForMonthOnExist(req.query, apiName);
     logger.info({
         API: apiName,
         plusResult: plusResult,
