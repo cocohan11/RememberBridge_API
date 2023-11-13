@@ -833,11 +833,13 @@ spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
     const year = Number(query.year);
     const month = Number(query.month);
     const diary_id = Number(query.diary_id);
+    const limit = Number(TIMELINE_LIMIT) // 5
     logger.debug({
       API: apiName,
       yearrr: year,
       monthhh: month,
       diary_id: diary_id,
+      limit: limit,
     });
   
     // 함수를 호출하여 결과를 확인합니다.
@@ -862,7 +864,7 @@ spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
     });
   
   
-    const limit = Number(TIMELINE_LIMIT) // 5
+
     let startIdx;
     let endIdx;
     for (let i = 0; i < origin_diary_info.length; i++) {
@@ -1005,11 +1007,13 @@ spaceMng.prototype.getTimelineForPointer = async (query, apiName) => {
   const year = Number(query.year);
   const month = Number(query.month);
   const diary_id = Number(query.diary_id);
+  const limit = Number(TIMELINE_LIMIT) // 5
   logger.debug({
     API: apiName,
     yearrr: year,
     monthhh: month,
     diary_id: diary_id,
+    limitt: limit,
   });
 
   // 함수를 호출하여 결과를 확인합니다.
@@ -1025,33 +1029,78 @@ spaceMng.prototype.getTimelineForPointer = async (query, apiName) => {
   });
 
   // 3. DB) 일기 데이터 얻기
-  let origin_diary_info = await mySQLQuery(await selectDiaryInfo(query, startDate_day1, startDate_day2, apiName));
+  let origin_diary_ids = await mySQLQuery(await selectDiaryRange(query, startDate_day1, startDate_day2, apiName));
+  
+  // diary_id만 담기
+  const diaryIds = origin_diary_ids.map(item => item.diary_id);
   logger.debug({
     API: apiName,
-    firstDiary_info: origin_diary_info,
-    diary_infolength: origin_diary_info.length,
-    diary_infolength000: origin_diary_info[origin_diary_info.length-1].diary_id, // 194
+    origin_diary_ids: origin_diary_ids,
+    origin_diary_ids길이: origin_diary_ids.length,
+    diaryIds: diaryIds,
   });
 
 
-  const limit = Number(TIMELINE_LIMIT) // 5
+  // diary_id기준으로 페이징
   let startIdx;
   let endIdx;
-  for (let i = 0; i < origin_diary_info.length; i++) {
-    const diary = origin_diary_info[i];
+  for (let i = 0; i < diaryIds.length; i++) {
+    const diary = diaryIds[i];
     logger.debug(i)
-    logger.debug(diary.diary_id)
+    logger.debug(diary)
     
-    if (diary.diary_id == query.diary_id) {
+
+    if (diary == query.diary_id) {
       logger.debug('slice')
       startIdx = i - limit;
-      endIdx = i + limit;
+      endIdx = i + limit + 1; // n개 --- 해당데이터 --- n개
       if (startIdx < 0) startIdx = 0;
-      if (endIdx > origin_diary_info.length) endIdx = origin_diary_info.length;
-      diary_info = origin_diary_info.slice(startIdx, endIdx);
-      i = origin_diary_info.length + 1; // 탈출
+      if (endIdx > diaryIds.length) endIdx = diaryIds.length;
+      after_diaryIds = diaryIds.slice(startIdx, endIdx);
+      i = diaryIds.length + 1; // 탈출
+
+
+      logger.debug({
+        API: apiName,
+        startIdx: startIdx,
+        endIdx: endIdx,
+        전diaryIds: diaryIds,
+        후diary_info: after_diaryIds,
+      });
     }
   }
+
+
+  // 새로운 배열 초기화
+  let diary_info_array = [];
+
+  // 반복문을 통해 diaryIdsArray의 각 diary_id에 대해 함수 호출 및 결과 추가
+  for (const diary_id of after_diaryIds) {
+    try {
+      let result = await mySQLQuery(await selectDiaryInfoOnlyOne(query, diary_id, apiName));
+    
+
+      // 풀어서 새로운 배열에 추가
+      diary_info_array = diary_info_array.concat(...result);
+      logger.debug({
+        API: apiName,
+        resulttt: result,
+        diary_info_array: diary_info_array,
+      });
+
+
+    } catch (error) {
+      console.error(`Error processing diary_id ${diary_id}: ${error.message}`);
+    }
+  }
+  logger.debug({
+    API: apiName,
+    diary_info_array: diary_info_array,
+  });
+
+  // return {
+  //   diary_info_array : diary_info_array
+  // }
 
 
   // 실제 응답할 데이터 x
@@ -1060,16 +1109,16 @@ spaceMng.prototype.getTimelineForPointer = async (query, apiName) => {
   if (startIdx != 0) {
     nextPageUp = 1
   } 
-  if (endIdx != origin_diary_info.length) {
+  if (endIdx != origin_diary_ids.length) {
     nextPageDown = 1
   } 
   logger.debug({
     API: apiName,
     startIdx: startIdx,
     endIdx: endIdx,
-    origin_diary_infolength: origin_diary_info.length,
-    infostartIdx: origin_diary_info[startIdx],
-    infoendIdx: origin_diary_info[endIdx],
+    origin_diary_idslength: origin_diary_ids.length,
+    infostartIdx: origin_diary_ids[startIdx],
+    infoendIdx: origin_diary_ids[endIdx],
     nextPageDown: nextPageDown, // 194
     nextPageUp: nextPageUp, // 194
   });
@@ -1082,7 +1131,7 @@ spaceMng.prototype.getTimelineForPointer = async (query, apiName) => {
   let diaryID = 0;
 
   // diary_info 배열을 순회
-  for (const [index, result] of diary_info.entries()) {
+  for (const [index, result] of diary_info_array.entries()) {
     const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
     logger.debug(`${index}`);
     logger.debug(`${photo_url}`);
@@ -1127,13 +1176,12 @@ spaceMng.prototype.getTimelineForPointer = async (query, apiName) => {
   };
 
 
-  // 4. 안 읽은 알림 갯수 조회
+  // // 4. 안 읽은 알림 갯수 조회
   let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
   const notice_count = count[0].count;
 
   return {
     notice_count,
-    // dog_info: dog_info,
     diary_info: diaryInfo,
     nextPageUp: nextPageUp,
     nextPageDown: nextPageDown,
@@ -1888,14 +1936,14 @@ async function selectDiaryInfo(query, startDate, EndDate, apiName) {
                 LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
                 LEFT JOIN USER AS U ON D.user_id = U.user_id
             WHERE
-                D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ?)
+                D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = 66)
                 AND D.select_date >= ?
                 AND D.select_date <= ?
             ORDER BY
                 D.select_date DESC, D.create_at DESC
             ;
             `,
-    params: [query.dog_id, startDate, EndDate],
+    params: [startDate, EndDate],
   };
 
   // return {
@@ -1949,6 +1997,66 @@ async function selectDiaryInfo(query, startDate, EndDate, apiName) {
   // };
 }
 
+
+// 일기 데이터 조회 쿼리문 작성
+async function selectDiaryRange(query, startDate, EndDate, apiName) {
+  logger.debug(`space_id값 얻은 후 사진조회 쿼리문 작성`);
+  logger.debug("query %o:" + query);
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    startDate: startDate,
+    EndDate: EndDate,
+    function: "selectDiaryRange()",
+  });
+
+  return {
+    text: `SELECT * FROM DIARY 
+            WHERE space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ?) 
+            AND select_date >= ?
+            AND select_date <= ?
+            order by select_date DESC, create_at DESC 
+            `,
+    params: [query.dog_id, startDate, EndDate],
+  };
+
+}
+
+
+// 일기 데이터 조회 쿼리문 작성
+async function selectDiaryInfoOnlyOne(query, diary_id, apiName) {
+  logger.debug(`space_id값 얻은 후 사진조회 쿼리문 작성`);
+  logger.debug("query %o:" + query);
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    diary_id: diary_id,
+    function: "selectDiaryRange()",
+  });
+
+  return {
+    text: `SELECT
+              D.diary_id,
+              D.diary_content,
+              P.photo_url,
+              DATE_FORMAT(D.select_date, '%Y-%m-%d') AS select_date,
+              D.create_at,
+              U.user_name,
+              U.user_prof_img
+          FROM
+              DIARY AS D
+              LEFT JOIN DIARY_PHOTO AS P ON D.diary_id = P.diary_id
+              LEFT JOIN USER AS U ON D.user_id = U.user_id
+          WHERE
+              D.space_id = (SELECT space_id FROM MEMORY_SPACE WHERE dog_id = ?)
+              AND D.diary_id = ?
+            ORDER BY
+            D.select_date DESC, D.diary_id DESC
+            `,
+    params: [query.dog_id, diary_id],
+  };
+
+}
 
 
 // 타임라인 조회 쿼리문 작성 (추억공간 top 화면)
