@@ -824,158 +824,166 @@ spaceMng.prototype.setDogImg = async (query, url, apiName) => {
 // };
 
 
-/** 타임라인 조회 - 포인터로 해당데이터 + 위아래데이터 가져오기
+/** 타임라인 조회 - 스크롤 위/아래 이벤트시 데이터 불러오기
  */
 spaceMng.prototype.getTimelineForUpOrDown = async (query, apiName) => {
 
 
-  // 1. DB) DOG 테이블에서 dog_info 리턴
-  // let dog_info = await mySQLQuery(await selectDogInfo(query, apiName));
-  // logger.debug({
-  //   API: apiName,
-  //   dog_info: dog_info,
-  // });
-  // if (!dog_info) return 1005; // 조회된 데이터가 없으면 1005 응답
-
+    // 숫자로변환
+    const year = Number(query.year);
+    const month = Number(query.month);
+    const diary_id = Number(query.diary_id);
+    logger.debug({
+      API: apiName,
+      yearrr: year,
+      monthhh: month,
+      diary_id: diary_id,
+    });
   
-  // 숫자로변환
-  const year = Number(query.year);
-  const month = Number(query.month);
-  const diary_id = Number(query.diary_id);
-  logger.debug({
-    API: apiName,
-    yearrr: year,
-    monthhh: month,
-    diary_id: diary_id,
-  });
+    // 함수를 호출하여 결과를 확인합니다.
+    let day1 = new Date(query.year, query.month-1, '02'); 
+    let day2 = new Date(query.year, query.month, 0); 
+    startDate_day1 = day1.getFullYear() + '-' + String(day1.getMonth() + 1).padStart(2, '0') + '-' + '01';
+    startDate_day2 = day2.getFullYear() + '-' + String(day2.getMonth() + 1).padStart(2, '0') + '-' + day2.getDate();
+  
+    logger.debug({
+      API: apiName,
+      startDate_day1: startDate_day1,
+      startDate_day2: startDate_day2,
+    });
+  
+    // 3. DB) 일기 데이터 얻기
+    let origin_diary_info = await mySQLQuery(await selectDiaryInfo(query, startDate_day1, startDate_day2, apiName));
+    logger.debug({
+      API: apiName,
+      firstDiary_info: origin_diary_info,
+      diary_infolength: origin_diary_info.length,
+      diary_infolength000: origin_diary_info[origin_diary_info.length-1].diary_id, // 194
+    });
+  
+  
+    const limit = Number(TIMELINE_LIMIT) // 5
+    let startIdx;
+    let endIdx;
+    for (let i = 0; i < origin_diary_info.length; i++) {
+      const diary = origin_diary_info[i];
+      logger.debug(i)
+      logger.debug(diary.diary_id)
+      
+      if (diary.diary_id == query.diary_id) {
+        logger.debug('slice')
+        
 
-  // 함수를 호출하여 결과를 확인합니다.
-  let day1 = new Date(query.year, query.month-1, '02'); 
-  let day2 = new Date(query.year, query.month, 0); 
-  startDate_day1 = day1.getFullYear() + '-' + String(day1.getMonth() + 1).padStart(2, '0') + '-' + '01';
-  startDate_day2 = day2.getFullYear() + '-' + String(day2.getMonth() + 1).padStart(2, '0') + '-' + day2.getDate();
-
-  logger.debug({
-    API: apiName,
-    startDate_day1: startDate_day1,
-    startDate_day2: startDate_day2,
-  });
-
-  // 3. DB) 일기 데이터 얻기
-  let origin_diary_info = await mySQLQuery(await selectDiaryInfo(query, startDate_day1, startDate_day2, apiName));
-  logger.debug({
-    API: apiName,
-    firstDiary_info: origin_diary_info,
-    diary_infolength: origin_diary_info.length,
-    diary_infolength000: origin_diary_info[origin_diary_info.length-1].diary_id, // 194
-  });
-
-
-  const limit = Number(TIMELINE_LIMIT) // 5
-  let startIdx;
-  let endIdx;
-  for (let i = 0; i < origin_diary_info.length; i++) {
-    const diary = origin_diary_info[i];
-    logger.debug(i)
-    logger.debug(diary.diary_id)
-    
-    if (diary.diary_id == query.diary_id) {
-      logger.debug('slice')
-      startIdx = i - limit;
-      endIdx = i + limit;
-      if (startIdx < 0) startIdx = 0;
-      if (endIdx > origin_diary_info.length) endIdx = origin_diary_info.length;
-      diary_info = origin_diary_info.slice(startIdx, endIdx);
-      i = origin_diary_info.length + 1; // 탈출
+        if (query.up_down == 1) {
+          startIdx = i + 1;
+          endIdx = i + limit + 1;
+        } else {
+          startIdx = i - limit
+          endIdx = i;
+        }
+        if (startIdx < 0) startIdx = 0;
+        if (endIdx > origin_diary_info.length) endIdx = origin_diary_info.length;
+        diary_info = origin_diary_info.slice(startIdx, endIdx);
+        i = origin_diary_info.length + 1; // 탈출
+      }
     }
-  }
-
-
-  // 실제 응답할 데이터 x
-  let nextPageDown = 0;
-  let nextPageUp = 0;
-  if (startIdx != 0) {
-    nextPageUp = 1
-  } 
-  if (endIdx != origin_diary_info.length) {
-    nextPageDown = 1
-  } 
-  logger.debug({
-    API: apiName,
-    startIdx: startIdx,
-    endIdx: endIdx,
-    origin_diary_infolength: origin_diary_info.length,
-    infostartIdx: origin_diary_info[startIdx],
-    infoendIdx: origin_diary_info[endIdx],
-    nextPageDown: nextPageDown, // 194
-    nextPageUp: nextPageUp, // 194
-  });
-
-
-
-  // 변환된 데이터를 저장할 빈 객체
-  const diaryInfo = {};
-  let arrPhoto = [];
-  let diaryID = 0;
-
-  // diary_info 배열을 순회
-  for (const [index, result] of diary_info.entries()) {
-    const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
-    logger.debug(`${index}`);
-    logger.debug(`${photo_url}`);
-    logger.debug(`${diaryID}`);
-    logger.debug(`${diary_id}`);
-    
-    // 날짜를 가진 객체를 찾거나 만듦
-    if (!diaryInfo[select_date]) {
-      diaryInfo[select_date] = [];
-    }
-    
-    // 재료
-    // 같은 일기가 아니라면
-    if (diaryID != diary_id) {
-      logger.debug(`초기화%%%%%%%%%%%%%`);
-      arrPhoto = [];
-    }
-    // arrPhoto.push(photo_url);
-    logger.debug(`*********arrPhoto : ${arrPhoto}`);
-
-    aa = { 
-      user_name,
-      user_prof_img,
-      diary_content,
-      photos : [], // 사진만 배열로 만들기 (제일 작은 단위)
-    };
-    bb = [];
-    bb.push(aa);
-    cc = { // 일기 id로 감싸기
-      [diary_id]: aa
-    }; 
-
-
-    // 날짜 안에 일기 데이터가 없다면
-    if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
-      diaryInfo[select_date].push(cc); // 객체를 통째로 추가
+  
+  
+    // 실제 응답할 데이터 x
+    let nextPageDown = 0;
+    let nextPageUp = 0;
+    if (startIdx != 0) {
+      nextPageUp = 1
     } 
+    if (endIdx != origin_diary_info.length) {
+      nextPageDown = 1
+    } 
+    logger.debug({
+      API: apiName,
+      startIdx: startIdx,
+      endIdx: endIdx,
+      origin_diary_infolength: origin_diary_info.length,
+      infostartIdx: origin_diary_info[startIdx],
+      infoendIdx: origin_diary_info[endIdx],
+      nextPageDown: nextPageDown, // 194
+      nextPageUp: nextPageUp, // 194
+    });
+  
+  
+  
+    // 변환된 데이터를 저장할 빈 객체
+    const diaryInfo = {};
+    let arrPhoto = [];
+    let diaryID = 0;
+  
+    // diary_info 배열을 순회
+    for (const [index, result] of diary_info.entries()) {
+      const { diary_id, diary_content, photo_url, select_date, user_name, user_prof_img } = result;
+      logger.debug(`${index}`);
+      logger.debug(`${photo_url}`);
+      logger.debug(`${diaryID}`);
+      logger.debug(`${diary_id}`);
+      
+      // 날짜를 가진 객체를 찾거나 만듦
+      if (!diaryInfo[select_date]) {
+        diaryInfo[select_date] = [];
+      }
+      
+      // 재료
+      // 같은 일기가 아니라면
+      if (diaryID != diary_id) {
+        logger.debug(`초기화%%%%%%%%%%%%%`);
+        arrPhoto = [];
+      }
+      arrPhoto.push(photo_url);
+      logger.debug(`*********arrPhoto : ${arrPhoto}`);
+  
+      aa = { 
+        user_name,
+        user_prof_img,
+        diary_content,
+        photos : [], // 사진만 배열로 만들기 (제일 작은 단위)
+      };
+      bb = [];
+      bb.push(aa);
+      cc = { // 일기 id로 감싸기
+        [diary_id]: aa
+      }; 
+  
+  
+      // 날짜 안에 일기 데이터가 없다면
+      if (!diaryInfo[select_date][0]) { // 일기데이터 추가하기(사진 포함) //
+        diaryInfo[select_date].push(cc); // 객체를 통째로 추가
+      } 
+  
+      diaryInfo[select_date][0][diary_id] = bb;
+      diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
+      diaryID = diary_id;
+    };
+  
+  
+    // 4. 안 읽은 알림 갯수 조회
+    let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
+    const notice_count = count[0].count;
+  
+  
+    if (query.up_down == 1) {
+      return {
+        notice_count,
+        diary_info: diaryInfo,
+        nextPageDown: nextPageDown,
+      }; 
+    } else {
+      return {
+        notice_count,
+        diary_info: diaryInfo,
+        nextPageUp: nextPageUp,
+      };
+    }
+  
 
-    diaryInfo[select_date][0][diary_id] = bb;
-    diaryInfo[select_date][0][diary_id][0]["photos"] = arrPhoto;
-    diaryID = diary_id;
+
   };
-
-
-  // // 4. 안 읽은 알림 갯수 조회
-  // let count = await mySQLQuery(await selectUnreadNoticeCount(query.dog_id, apiName));
-  // const notice_count = count[0].count;
-
-  return {
-    // notice_count,
-    // dog_info: dog_info,
-    diary_info: diary_info,
-    nextPageUp: nextPageUp,
-    nextPageDown: nextPageDown,
-  }; // 원하는 출력 모양을 추가함
-};
 
 
 

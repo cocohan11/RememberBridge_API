@@ -357,7 +357,7 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
 
 // })
 
-/** 타임라인 조회 - 위아래 10개 조회 API */
+/** 타임라인 조회 - 스크롤 위/아래 조회 API */
 router.get('/timeline/page/scroll', async (req, res) => {
 
     // API 정보
