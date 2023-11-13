@@ -357,6 +357,36 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
 
 
 
+/** 타임라인 조회 - 위아래 10개 조회 API */
+router.get('/timeline/page/scroll', async (req, res) => {
+
+    // API 정보
+    const apiName = '타임라인 조회 API';
+    logger.http({
+      API: apiName,
+      reqQuery: req.query
+    });
+    // 파라미터값 누락 확인
+    if (!req.query.dog_id|| !req.query.diary_id|| !req.query.year|| !req.query.month|| !req.query.up_down) {
+      return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    } 
+  
+    // DB
+    const plusResult = await spaceMngDB.getTimelineForUpOrDown(req.query, apiName);
+    logger.info({
+      API: apiName,
+      plusResult: plusResult
+    });
+    
+    // response
+    if (plusResult != 9999 && plusResult != 1005 && plusResult != undefined) {
+      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
+    } else {
+      return resCode.returnResponseCode(res, plusResult, apiName, null, null);
+    }
+  
+  })
+  
 
 /** 타임라인 조회 - 포인터로 위아래5개씩 API */
 router.get('/timeline/page', async (req, res) => {
@@ -373,37 +403,7 @@ router.get('/timeline/page', async (req, res) => {
   } 
 
   // DB
-  const plusResult = await spaceMngDB.getTimelineForUpOrDown(req.query, apiName);
-  logger.info({
-    API: apiName,
-    plusResult: plusResult
-  });
-  
-  // response
-  if (plusResult != 9999 && plusResult != 1005 && plusResult != undefined) {
-    return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult); // 성공시 응답받는 곳
-  } else {
-    return resCode.returnResponseCode(res, plusResult, apiName, null, null);
-  }
-
-})
-
-/** 타임라인 조회 - 위아래 10개 조회 API */
-router.get('/timeline/page', async (req, res) => {
-
-  // API 정보
-  const apiName = '타임라인 조회 API';
-  logger.http({
-    API: apiName,
-    reqQuery: req.query
-  });
-  // 파라미터값 누락 확인
-  if (!req.query.dog_id|| !req.query.page_num|| !req.query.year|| !req.query.month|| !req.query.up_down) {
-    return resCode.returnResponseCode(res, 1002, apiName, null, null);
-  } 
-
-  // DB
-  const plusResult = await spaceMngDB.getTimelineForUpOrDown(req.query, apiName);
+  const plusResult = await spaceMngDB.getTimelineForPointer(req.query, apiName);
   logger.info({
     API: apiName,
     plusResult: plusResult
