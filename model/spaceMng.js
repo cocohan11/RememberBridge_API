@@ -1092,7 +1092,7 @@ spaceMng.prototype.getTimelineForPointer = async (query, apiName) => {
       logger.debug(`초기화%%%%%%%%%%%%%`);
       arrPhoto = [];
     }
-    // arrPhoto.push(photo_url);
+    arrPhoto.push(photo_url);
     logger.debug(`*********arrPhoto : ${arrPhoto}`);
 
     aa = { 
