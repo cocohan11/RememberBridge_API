@@ -68,7 +68,7 @@ router.post('/diary/comment/edit', async (req, res) => {
 });
 
 /** 댓글 모두보기 API */
-router.get('/diary/comment/:diary_id?', async (req, res) => {
+router.get('/diary/comment/:diary_id?/:page?', async (req, res) => {
     // API 정보
     const apiName = '댓글 모두보기 API';
     logger.http({
@@ -77,7 +77,7 @@ router.get('/diary/comment/:diary_id?', async (req, res) => {
     });
 
     // 파라미터값 누락 확인
-    if (!req.params.diary_id) {
+    if (!req.params.diary_id|| !req.params.page) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 

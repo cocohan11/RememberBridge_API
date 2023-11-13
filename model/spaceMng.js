@@ -144,12 +144,18 @@ spaceMng.prototype.changeComment = async (query, apiName) => {
  * 2. 댓글 갯수
  */
 spaceMng.prototype.getDiaryComments = async (query, apiName) => {
+  
+  
   // 2. 댓글 전체
+  const limit = Number(NOTICE_LIMIT)
   let comment_info = await mySQLQuery(
-    await selectDiaryComment(query.diary_id, 1000, apiName)
+    await selectDiaryCommentPage(query.diary_id, query.page, limit, apiName)
   ); // 최신댓글 1000개 조회
   logger.debug({
     API: apiName,
+    diary_id: query.diary_id,
+    page: query.page,
+    limit: limit,
     comment_info: comment_info,
   });
   if (comment_info.length == 0) return 1005;
@@ -1778,6 +1784,30 @@ async function selectTheDiaryComment(comment_id, apiName) {
     params: [comment_id],
   };
 }
+
+// 일기 댓글 조회 쿼리문 작성
+async function selectDiaryCommentPage(diaryId, page, limit, apiName) {
+  const offset = (page-1)*limit
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    diaryId: diaryId,
+    page: page,
+    limit: limit,
+    function: "selectDiaryComment()",
+  });
+
+  return {
+    text: `SELECT COMMENT.comment_id, USER.user_name, USER.user_id, COMMENT.comment_text
+                FROM COMMENT
+                INNER JOIN USER ON COMMENT.user_id = USER.user_id
+                WHERE diary_id = ?
+                ORDER BY COMMENT.create_at DESC
+                LIMIT ? OFFSET ?; 
+        `,
+    params: [diaryId, limit, offset],
+  };
+}
+
 
 // 일기 댓글 조회 쿼리문 작성
 async function selectDiaryComment(diaryId, limit, apiName) {
