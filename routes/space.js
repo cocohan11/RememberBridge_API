@@ -325,6 +325,8 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
     }
 });
 
+
+
 /** 타임라인 조회 (추억공간 첫 화면) API */
 // router.get('/timeline/:dog_id?/:year?/:month?/:page_num?', async (req, res) => {
 
@@ -355,8 +357,6 @@ router.post('/background', uploadForBackground.single('dog_bkg_img'), async (req
 
 // })
 
-
-
 /** 타임라인 조회 - 위아래 10개 조회 API */
 router.get('/timeline/page/scroll', async (req, res) => {
 
@@ -385,8 +385,7 @@ router.get('/timeline/page/scroll', async (req, res) => {
       return resCode.returnResponseCode(res, plusResult, apiName, null, null);
     }
   
-  })
-  
+}) 
 
 /** 타임라인 조회 - 포인터로 위아래5개씩 API */
 router.get('/timeline/page', async (req, res) => {
@@ -424,15 +423,15 @@ router.get('/timeline/date/:dog_id?/:year?/:month?', async (req, res) => {
     const apiName = '타임라인 조회 - 일기가 존재하는 한달날짜 조회 API';
     logger.http({
         API: apiName,
-        reqParams: req.query,
+        reqParams: req.params,
     });
     // 파라미터값 누락 확인
-    if (!req.query.dog_id || !req.query.year || !req.query.month) {
+    if (!req.params.dog_id || !req.params.year || !req.params.month) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
     // DB
-    const plusResult = await spaceMngDB.getDateForMonthOnExist(req.query, apiName);
+    const plusResult = await spaceMngDB.getDateForMonthOnExist(req.params, apiName);
     logger.info({
         API: apiName,
         plusResult: plusResult,
