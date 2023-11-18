@@ -6,8 +6,8 @@ const resCode = require('../util/resCode');
 const jwt = require('jsonwebtoken');
 const logger = require("../winston/logger");
 const multerMid = require('../util/multerMid');
-
-
+const dbPool = require('../util/dbPool');
+const util = require('util');
 
 let message;
 /** RESTful API 엔드포인트
@@ -910,5 +910,43 @@ router.get('/test/token/:email?', async (req, res) => {
 
     })
 })
+router.get('/test/transaction', async (req, res, next) => {
+  
+    const mysql = require('mysql')
+    require("dotenv").config();
+    const { DB_HOSTNAME, DB_USERNAME, DB_PASSWORD, DB_DATABASE, DB_PORT } = process.env;
+    const connection = mysql.createConnection({
+        host: DB_HOSTNAME,
+        user: DB_USERNAME,
+        password: DB_PASSWORD,
+        database: DB_DATABASE,
+        port: DB_PORT, 
+    })
+    connection.connect()
+    connection.beginTransaction((err)=>{
+        connection.query(
+            `INSERT INTO USER
+                (user_email) 
+                VALUES (?)`,
+            ['khe@']
+            , function (error, results, fields) {
+            if (error) throw error;
+            console.log(results)
+                connection.query('delete..',(err, result, fields)=>{
+                    if (err){
+                        console.log('에러 rollback', err)
+                        connection.rollback();
+                    } else{
+                        console.log('에러 아님 commit', err)
+                        connection.commit()
+                    }
+                        console.log('에러 아님 end', err)
+                        connection.end()
+            })
+        
+        })
+    })
+});
+
 module.exports = router;
 
