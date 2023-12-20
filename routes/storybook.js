@@ -1,7 +1,7 @@
 /** 스토리북 API */
 const express = require('express');
 const router = express.Router();
-const storybookMngDB = require('../model/storybookMng');
+const storybookMngDB = require('../services/storybookMng');
 const resCode = require('../util/resCode');
 const logger = require('../winston/logger');
 
@@ -14,12 +14,11 @@ router.post('/story', async (req, res) => {
     logger.http({
         API: apiName,
         reqBody: req.body,
-        book_content: req.body.book_content,
-        plot_content: req.body.plot_content,
+        reqBody_book_character: req.body.book_character,
     });
 
     // 파라미터값 누락 확인
-    if (!req.body.space_id || !req.body.book_name|| !req.body.book_writer|| !req.body.book_character|| !req.body.book_outline|| !req.body.book_content|| !req.body.plot_content) {
+    if (!req.body.space_id || !req.body.book_name|| !req.body.book_writer|| !req.body.book_character|| !req.body.book_outline|| !req.body.book_content|| !req.body.image_prompt) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 

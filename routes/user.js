@@ -1,7 +1,7 @@
 /** 회원정보 처리 API */
 const express = require('express');
 const router = express.Router();
-const userMngDB = require('../model/userMng');
+const userMngDB = require('../services/userMng');
 const resCode = require('../util/resCode');
 const jwt = require('jsonwebtoken');
 const logger = require("../winston/logger");

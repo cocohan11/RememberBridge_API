@@ -1,7 +1,7 @@
 /** 추억공간 API */
 const express = require('express');
 const router = express.Router();
-const spaceMngDB = require('../model/spaceMng');
+const spaceMngDB = require('../services/spaceMng');
 const resCode = require('../util/resCode');
 const logger = require('../winston/logger');
 const multerMid = require('../util/multerMid'); // S3 multer 사진저장 미들웨어 별도 파일로 정리해둠
