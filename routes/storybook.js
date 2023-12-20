@@ -61,7 +61,7 @@ router.post('/imageUrl', async (req, res) => {
 
 
 /** 스토리북 - 책장 조회 API */
-router.get('/:space_id?', async (req, res) => {
+router.get('/books/:space_id?', async (req, res) => {
     // API 정보
     const apiName = '책장 조회 API';
     logger.http({
