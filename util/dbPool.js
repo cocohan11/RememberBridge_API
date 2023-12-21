@@ -10,15 +10,19 @@ config = {
   password: DB_PASSWORD,
   database: DB_DATABASE,
   port: DB_PORT, 
-  connectionLimit : 10,
-  multipleStatements : true,
+  // connectionLimit : 10,
+  // multipleStatements : true,
 };
 
 
 const _mysqlPool = {
   init: function () {
-    return mysql.createPool(config);
+    console.log("mysql 초기화함");
+    return mysql.createConnection(config);
+    // return mysql.createPool(config);
 	},
 };
+
+
 
 module.exports = _mysqlPool;
