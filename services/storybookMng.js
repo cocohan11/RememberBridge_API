@@ -19,7 +19,57 @@ AWS.config.update({
   secretAccessKey: AWS_S3_ACCESS_KEY,
 });
 const s3 = new AWS.S3();
-function storybookMng() {}
+function storybookMng() { }
+
+
+
+
+/** 글편집 조회
+ * - 사용자가 만든 모든 책의 목록을 보여준다. 
+ */
+storybookMng.prototype.getAllStories = async (query, apiName) => {
+
+  logger.debug({
+    API: apiName,
+    query: query,
+  });
+
+
+  // 이미지 url 저장 
+  const res1 = await mySQLQuery(getBookInfo(query, apiName));
+  const res2 = await mySQLQuery(getStories(query, apiName));
+  const res3 = await mySQLQuery(getCharacters(query, apiName));
+
+
+  // 새로운 객체 생성
+  const book_content = {};
+  res2.forEach((item) => {
+    const key = `page${item.book_page}`;
+    book_content[key] = item.book_content;
+  });
+  const book_character = getBookNameDesc(res3);
+  
+  logger.debug({
+    API: apiName,
+    res1: res1,
+    book_content: book_content,
+    res3: res3,
+    res3type: res3.type,
+    book_character: book_character,
+  });
+
+  // res1, res2, res3 합치기
+  const result = {
+    book_name: res1[0].book_name,
+    book_outline: res1[0].book_outline,
+    book_writer: res1[0].book_writer,
+    book_content : book_content,
+    book_character : book_character
+  }
+  return result;
+}; 
+
+
 
 /** 스토리북 만들기 
  * 1. 스토리북 책 생성
@@ -35,58 +85,74 @@ storybookMng.prototype.createbook = async (query, apiName) => {
   });
 
 
-  // 1. 책생성 - insert 됐는지 확인
-  const res1 = await mySQLQuery(createbook(query, apiName));
-  logger.debug({
-    API: apiName,
-    res1: res1,
-  });
-  book_id = res1.insertId;
-  if (book_id == null) return 9999;
+  try {
+    connection.connect()
+    connection.beginTransaction() // 트랜잭션 적용 시작
+   
 
-
-  // 2. 캐릭터 저장 - insert 됐는지 확인
-  // 3개의 캐릭터
-  mainChar = query.book_character.mainChar; // mainChar: { name: '주인공이름', description: '캐릭터에 대한 자세한 표현' },
-  subChar = query.book_character.subChar;
-  subChar2 = query.book_character.subChar2;
-  const res2_main = await mySQLQuery(saveCharacterName(query, mainChar, 0, book_id, apiName));
-  const res2_sub = await mySQLQuery(saveCharacterName(query, subChar, 1, book_id, apiName));
-  const res2_sub2 = await mySQLQuery(saveCharacterName(query, subChar2, 2, book_id, apiName));
-  logger.debug({
-    API: apiName,
-    res2_main: res2_main,
-    res2_sub: res2_sub,
-    res2_sub2: res2_sub2,
-  });
-  if (res2_main.insertId == null || res2_sub.insertId == null || res2_sub2.insertId == null) return 9999;
-
-
-  // 3.스토리 저장
-  for (let i = 1; i <= 6; i++) {
-    const page_content = query.book_content[`page${i}`];
-    const res3 = await mySQLQuery(saveStrories(query, i, page_content, book_id, apiName));
+    // 1. 책생성 - insert 됐는지 확인
+    const res1 = await mySQLQuery(createbook(query, apiName));
     logger.debug({
       API: apiName,
-      i: i,
-      res3: res3,
+      res1: res1,
     });
-  }
+    book_id = res1.insertId;
+    if (book_id == null) return 9999;
 
 
-  // 4. 프롬프트 저장
-  for (let i = 1; i <= 6; i++) {
-    const image_prompt = query.image_prompt[`page${i}`];
-    const res4 = await mySQLQuery(savePrompt(query, i, image_prompt, book_id, apiName));
+    // 2. 캐릭터 저장 - insert 됐는지 확인
+    // 3개의 캐릭터
+    mainChar = query.book_character.mainChar; // mainChar: { name: '주인공이름', description: '캐릭터에 대한 자세한 표현' },
+    subChar = query.book_character.subChar;
+    subChar2 = query.book_character.subChar2;
+    const res2_main = await mySQLQuery(saveCharacterName(query, mainChar, 0, book_id, apiName));
+    const res2_sub = await mySQLQuery(saveCharacterName(query, subChar, 1, book_id, apiName));
+    const res2_sub2 = await mySQLQuery(saveCharacterName(query, subChar2, 2, book_id, apiName));
     logger.debug({
       API: apiName,
-      i: i,
-      res4: res4,
+      res2_main: res2_main,
+      res2_sub: res2_sub,
+      res2_sub2: res2_sub2,
     });
+    if (res2_main.insertId == null || res2_sub.insertId == null || res2_sub2.insertId == null) return 9999;
+
+
+    // 3.스토리 저장
+    for (let i = 1; i <= 6; i++) {
+      const page_content = query.book_content[`page${i}`];
+      const res3 = await mySQLQuery(saveStrories(query, i, page_content, book_id, apiName));
+      logger.debug({
+        API: apiName,
+        i: i,
+        res3: res3,
+      });
+    }
+
+
+    // 4. 프롬프트 저장
+    for (let i = 1; i <= 6; i++) {
+      const image_prompt = query.image_prompt[`page${i}`];
+      const res4 = await mySQLQuery(savePrompt(query, i, image_prompt, book_id, apiName));
+      logger.debug({
+        API: apiName,
+        i: i,
+        res4: res4,
+      });
+    }
+
+
+    connection.commit() // 커밋
+    return 2000;
+
+  } catch (err) {
+    console.log("롤백 err : "+err)
+    connection.rollback() // 롤백
+    return 9999;
+  
+  } finally {
+    connection.end() // connection 회수
   }
 
-
-  return 2000;
 }; 
 
 
@@ -101,19 +167,24 @@ storybookMng.prototype.saveImageUrl = async (query, apiName) => {
     query: query,
   });
 
+  try {
+    connection.connect()
+    connection.beginTransaction() // 트랜잭션 적용 시작
+    const result = await mySQLQuery(saveImageUrl(query, apiName));
+    img_id = result.insertId;
+    connection.commit() // 커밋
+    if (img_id == null) return 9999;
+    return 2000;
 
-  // 이미지 url 저장 
-  const res = await mySQLQuery(saveImageUrl(query, apiName));
-  img_id = res.insertId;
-  logger.debug({
-    API: apiName,
-    res: res,
-    img_id: img_id,
-  });
-
+  } catch (err) {
+    console.log("롤백 err : "+err)
+    connection.rollback() // 롤백
+    return 9999;
   
-  if (img_id == null) return 9999;
-  return 2000;
+  } finally {
+    connection.end() // connection 회수
+  }
+
 }; 
 
 
@@ -140,6 +211,101 @@ storybookMng.prototype.getAllBooks = async (query, apiName) => {
 
 
 //------------------------------------------------------
+
+function getBookNameDesc(res) {
+  // type에 따라 키를 할당
+  mainChar = {}
+  subChar = {}
+  subChar2 = {}
+
+  for (i = 0; i < 3; i++) {
+    switch (res[i].type) {
+      case 0:
+        mainChar = {
+          name: res[i].name,
+          description: res[i].description
+        };
+      case 1:
+        subChar = {
+          name: res[i].name,
+          description: res[i].description
+        };
+      case 2:
+        subChar2 = {
+          name: res[i].name,
+          description: res[i].description
+        };
+      default:
+        // 예외 처리: type이 0, 1, 2가 아닌 경우
+        console.error('Unexpected type:', res[i].type);
+    }
+  }
+  return {
+    mainChar: mainChar,
+    subChar: subChar,
+    subChar2: subChar2
+  }
+}
+
+// 1권에 대한 캐릭터 조회
+function getCharacters(query, apiName) {
+  
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "getCharacters()",
+  });
+
+  return {
+    text: `
+          select type, name, description
+          from STORYBOOK_CHARACTER 
+          where book_id = ?
+          `,
+    params: [query.book_id],
+  };
+}
+
+
+// 1권에 대한 스토리 조회
+function getStories(query, apiName) {
+  
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "getStories()",
+  });
+
+  return {
+    text: `
+          select book_page, book_content
+          from STORYBOOK_STORY 
+          where book_id = ?
+          `,
+    params: [query.book_id],
+  };
+}
+
+
+// 1권에 대한 책정보 조회
+function getBookInfo(query, apiName) {
+  
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "getBookInfo()",
+  });
+
+  return {
+    text: `
+          select book_name, book_outline, book_writer
+          from STORYBOOK 
+          where book_id = ?
+          `,
+    params: [query.book_id],
+  };
+}
+
 
 // 책장 조회
 function getAllBooks(query, apiName) {
@@ -180,7 +346,6 @@ function saveImageUrl(query, apiName) {
     params: [query.book_id, query.book_page, query.img_url],
   };
 }
-
 
 
 // 이미지 프롬프트 저장
