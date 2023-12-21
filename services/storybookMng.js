@@ -3,6 +3,7 @@
 const dbPool = require("../util/dbPool");
 const S3function = require("../util/S3function");
 const connection = dbPool.init();
+connection.connect()
 const logger = require("../winston/logger");
 require("dotenv").config(); // 환경변수 모듈
 const {
@@ -86,7 +87,6 @@ storybookMng.prototype.createbook = async (query, apiName) => {
 
 
   try {
-    connection.connect()
     connection.beginTransaction() // 트랜잭션 적용 시작
    
 
@@ -157,7 +157,7 @@ storybookMng.prototype.createbook = async (query, apiName) => {
     return 9999;
   
   } finally {
-    connection.end() // connection 회수
+    // connection.end() // connection 회수  -> mysql 에러 원인
   }
 
 }; 
