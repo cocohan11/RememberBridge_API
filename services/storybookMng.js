@@ -168,22 +168,15 @@ storybookMng.prototype.saveImageUrl = async (query, apiName) => {
   });
 
   try {
-    connection.connect()
-    connection.beginTransaction() // 트랜잭션 적용 시작
     const result = await mySQLQuery(saveImageUrl(query, apiName));
     img_id = result.insertId;
-    connection.commit() // 커밋
     if (img_id == null) return 9999;
     return 2000;
 
   } catch (err) {
     console.log("롤백 err : "+err)
-    connection.rollback() // 롤백
     return 9999;
-  
-  } finally {
-    connection.end() // connection 회수
-  }
+  } 
 
 }; 
 
