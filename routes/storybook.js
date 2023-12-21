@@ -60,7 +60,11 @@ router.post('/story', async (req, res) => {
     });
 
     // response
-    return resCode.returnResponseCode(res, result, apiName, null, null);
+    if (result != 9999 && result != 1005 && result != undefined) {
+        return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', result); // 성공시 응답받는 곳
+    } else {
+        return resCode.returnResponseCode(res, result, apiName, null, null);
+    }
 });
 
 
