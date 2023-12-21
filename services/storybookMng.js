@@ -142,7 +142,14 @@ storybookMng.prototype.createbook = async (query, apiName) => {
 
 
     connection.commit() // 커밋
-    return 2000;
+
+
+    let today = new Date();
+    let today_formed = formatDate(today)
+    return {
+      book_id: book_id,
+      issue_date: today_formed
+    };
 
   } catch (err) {
     console.log("롤백 err : "+err)
@@ -204,6 +211,15 @@ storybookMng.prototype.getAllBooks = async (query, apiName) => {
 
 
 //------------------------------------------------------
+
+// Date 객체 to 'yyyy-mm-dd' 함수
+function formatDate(date) {
+  let dd = String(date.getDate()).padStart(2, '0');
+  let mm = String(date.getMonth() + 1).padStart(2, '0'); // January is 0!
+  let yyyy = date.getFullYear();
+  return yyyy + '년 ' + mm + '월 ' + dd + '일';
+}
+
 
 function getBookNameDesc(res) {
   // type에 따라 키를 할당
