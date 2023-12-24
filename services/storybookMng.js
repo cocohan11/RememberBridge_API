@@ -60,10 +60,10 @@ storybookMng.prototype.getAllImages = async (query, apiName) => {
   
   const img_url = {};
   res4.forEach((item) => {
-    const key = `page${item.book_page}`;
+    let pageKey = `page${item.book_page}`;
     if (pageKey == 'page0') pageKey = 'cover_page'
-    img_url[key] = item.img_url;
-    if(item.img_url == undefined) img_url[key] = '' // 빈값예외처리
+    img_url[pageKey] = item.img_url;
+    if(item.img_url == undefined) img_url[pageKey] = '' // 빈값예외처리
   });
   
   logger.debug({
