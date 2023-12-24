@@ -54,15 +54,14 @@ storybookMng.prototype.getAllImages = async (query, apiName) => {
   const image_prompt = {};
   res3.forEach(item => {
     let pageKey = `page${item.book_page}`;
-    if (pageKey == 'page0') {
-      pageKey = 'cover_page'
-    }
+    if (pageKey == 'page0') pageKey = 'cover_page'
     image_prompt[pageKey] = item.image_prompt;
   });
   
   const img_url = {};
   res4.forEach((item) => {
     const key = `page${item.book_page}`;
+    if (pageKey == 'page0') pageKey = 'cover_page'
     img_url[key] = item.img_url;
     if(item.img_url == undefined) img_url[key] = '' // 빈값예외처리
   });
