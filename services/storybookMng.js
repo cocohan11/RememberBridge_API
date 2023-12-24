@@ -61,6 +61,7 @@ storybookMng.prototype.getAllStories = async (query, apiName) => {
 
   // res1, res2, res3 합치기
   const result = {
+    issue_date: res1[0].issue_date,
     book_name: res1[0].book_name,
     book_outline: res1[0].book_outline,
     book_writer: res1[0].book_writer,
@@ -307,7 +308,7 @@ function getBookInfo(query, apiName) {
 
   return {
     text: `
-          select book_name, book_outline, book_writer
+          select book_name, book_outline, book_writer, DATE_FORMAT(create_at, '%Y년 %m월 %d일') AS issue_date
           from STORYBOOK 
           where book_id = ?
           `,
