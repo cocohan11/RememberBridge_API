@@ -23,6 +23,70 @@ const s3 = new AWS.S3();
 function storybookMng() { }
 
 
+/** 이미지 편집화면 조회
+ * - 사용자가 만든 모든 책의 목록을 보여준다. 
+ */
+storybookMng.prototype.getAllImages = async (query, apiName) => {
+
+  logger.debug({
+    API: apiName,
+    query: query,
+  });
+
+
+  // 이미지 url 저장 
+  const res1 = await mySQLQuery(getBookInfo(query, apiName));
+  const res2 = await mySQLQuery(getStories(query, apiName));
+  const res3 = await mySQLQuery(getImagePrompts(query, apiName));
+  const res4 = await mySQLQuery(getImageUrls(query, apiName));
+  if (res1.length === 0) {
+    return 1005 // issue_date: res1[0].issue_date 부분이 에러나서 예외처리
+  }
+
+
+  // 새로운 객체 생성
+  const book_content = {};
+  res2.forEach((item) => {
+    const key = `page${item.book_page}`;
+    book_content[key] = item.book_content;
+  });
+
+  const image_prompt = {};
+  res3.forEach(item => {
+    let pageKey = `page${item.book_page}`;
+    if (pageKey == 'page0') {
+      pageKey = 'cover_page'
+    }
+    image_prompt[pageKey] = item.image_prompt;
+  });
+  
+  const img_url = {};
+  res4.forEach((item) => {
+    const key = `page${item.book_page}`;
+    img_url[key] = item.img_url;
+    if(item.img_url == undefined) img_url[key] = '' // 빈값예외처리
+  });
+  
+  logger.debug({
+    API: apiName,
+    res1: res1,
+    // img_url: img_url,
+    // res3: res3,
+    // image_prompt: image_prompt
+    // book_character: book_character,
+  });
+
+  // res1, res2, res3 합치기
+  const result = {
+    issue_date: res1[0].issue_date,
+    book_name: res1[0].book_name,
+    book_writer: res1[0].book_writer,
+    book_content: book_content,
+    image_prompt: image_prompt,
+    img_url: img_url,
+  }
+  return result;
+}; 
 
 
 /** 글편집 조회
@@ -61,6 +125,7 @@ storybookMng.prototype.getAllStories = async (query, apiName) => {
 
   // res1, res2, res3 합치기
   const result = {
+    issue_date: res1[0].issue_date,
     book_name: res1[0].book_name,
     book_outline: res1[0].book_outline,
     book_writer: res1[0].book_writer,
@@ -256,6 +321,49 @@ function getBookNameDesc(res) {
   }
 }
 
+
+// 1권에 대한 이미지url 리스트 조회
+function getImageUrls(query, apiName) {
+  
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "getImageUrls()",
+  });
+
+  return {
+    text: `
+          select promt_id, book_page, image_prompt
+          from STORYBOOK_PROMPT 
+          where book_id = ?
+          ORDER BY book_page
+          `,
+    params: [query.book_id],
+  };
+}
+
+
+// 1권에 이미지 프롬프트 리스트 조회
+function getImagePrompts(query, apiName) {
+  
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "getImagePrompts()",
+  });
+
+  return {
+    text: `
+          select promt_id, book_page, image_prompt
+          from STORYBOOK_PROMPT 
+          where book_id = ?
+          ORDER BY book_page
+          `,
+    params: [query.book_id],
+  };
+}
+
+
 // 1권에 대한 캐릭터 조회
 function getCharacters(query, apiName) {
   
@@ -307,7 +415,7 @@ function getBookInfo(query, apiName) {
 
   return {
     text: `
-          select book_name, book_outline, book_writer
+          select book_name, book_outline, book_writer, DATE_FORMAT(create_at, '%Y년 %m월 %d일') AS issue_date
           from STORYBOOK 
           where book_id = ?
           `,
