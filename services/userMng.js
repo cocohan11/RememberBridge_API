@@ -30,6 +30,9 @@ secretAccessKey: AWS_S3_ACCESS_KEY,
 const s3 = new AWS.S3();
 function userMng() {}
 
+//nodejs의 promisify 함수를 사용해 콜백기반으로 Promise 함수로 반환하도록 한다.
+const util = require('util');
+
 
 
 
@@ -649,6 +652,64 @@ userMng.prototype.addUser = (query, apiName) => {
 };
 
 //ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
+
+/** 안드로이드에서 SNS 회원가입 및 로그인 */
+userMng.prototype.addUserOrLogin = async (query, apiName) => {
+    logger.debug({
+        API: apiName,
+        params: query, 
+    });
+
+    const user_info = await mySQLQuery(queryGetUser(query, apiName));
+
+    // 회원조회 후 회원정보가 없으면 회원가입 처리
+    if (!user_info[0]) {
+
+
+    }
+
+    return resulst = {
+        user_info: user_info[0],
+        space_info: space_info,
+    };
+
+
+
+    // 회원조회 후 회원정보가 있으면 로그인 처리
+    
+
+
+    // 회원가입 쿼리문 작성
+    // async function insertUser(query) {
+    //     user_pw = await toHashPassword(query.user_pw, apiName);
+
+    //     // 만들 조건문 : sns회원인지 일반회원인지
+    //     // 비번 해싱
+
+    //     return {
+    //         text: `INSERT INTO USER 
+    //                 (user_email, user_pw, user_state, user_name, login_sns_type, create_at) 
+    //                 VALUES (?, ?, 'N', ?, ?, now())`,
+    //         params: [query.user_email, user_pw, query.user_name, query.login_sns_type],
+    //     };
+    // }
+
+    // // 회원가입 쿼리문 날리기
+    // return new Promise(async (resolve, reject) => {
+    //     mySQLQuery(await insertUser(query, apiName)) // 쿼리문 실행 / await로 동기화
+    //         .then((res) => {
+    //             return resolve(2000); // USER테이블에 회원가입 완료
+    //         })
+    //         .catch((err) => {
+    //             logger.error({
+    //                 API: apiName,
+    //                 error: err
+    //             });
+    //             return resolve(9999);
+    //         });
+    // });
+};
+
 
 
 // 회원탈퇴 - 한 유저의 일기id조회
@@ -1548,6 +1609,22 @@ function mySQLQuery(query) {
         }
     });
 }
+
+
+//12.24 김위작성 - async/await코드 리팩토링
+// 재사용할 쿼리 함수
+mySQLQuery2 = async (query) => {
+    const queryPromise = util.promisify(connection.query).bind(connection);   
+    try {
+        // query 실행
+        const rows = await queryPromise(query.text, query.params);
+        return rows;
+    } catch (err) {
+        throw err; // 에러 발생 시 에러를 던짐
+    }
+}
+
+
 
 //ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
 

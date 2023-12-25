@@ -948,5 +948,60 @@ router.get('/test/transaction', async (req, res, next) => {
     })
 });
 
+
+/** 
+ * @date - 23.12.22
+ * @author - wkimdev
+ * @desc - API 20번. 안드로이드 앱 SNS 회원가입/로그인 API [작업중]
+ * */
+router.post('/app/join/sns', async (req, res) => {
+    // API 정보
+    const apiName = '안드로이드 앱 SNS 회원가입/로그인 API';
+    logger.http({
+        'API': apiName,
+        reqBody: req.body
+    });
+   
+    // 파라미터값 누락 확인
+    if (!req.body.user_email || !req.body.user_name || !req.body.login_sns_type) {
+      return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    } 
+  
+    // DB
+    const user = await userMngDB.addUserOrLogin(req.body, apiName);
+    
+    logger.info({
+        API: apiName,
+        user: user
+    });
+    
+    //DB에 해당 유저가 이미 존재 O => 로그인처리 응답
+    //DB에 해당 유저가 이미 존재 X => 회원가입처리 응답
+
+    //로그인 정보가 없으면 undefined가 뜨는게 맞나? 
+    if (!user) {
+        //회원가입처리
+        
+    } else {
+        //로그인처리
+    }
+
+
+
+
+
+    // response
+    // if (user == 2000) {
+    //   // 성공시 응답받는 곳
+    //   return resCode.returnResponseCode(res, 2000, apiName, null, null);
+    // } else if (user == 1005) {
+    //   return resCode.returnResponseCode(res, 1005, apiName, null, null);
+    // } else {
+    //   return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    // }
+  
+})
+
+
 module.exports = router;
 
