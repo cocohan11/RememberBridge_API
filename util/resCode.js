@@ -3,6 +3,9 @@ function resCode() {}
 /**
  * 에러코드로 응답을 받기 
  * 파라미터로 에러코드 넣으면 바로 json출력해주기
+ * @param res 
+ * @param value - 응답코드
+ * @param subMessage - 응답메세지
  */
 resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessage) => { // subMessage:특별히 출력한 메세지가있는경우 기입, 없으면 null
     switch (value) {

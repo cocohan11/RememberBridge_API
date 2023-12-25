@@ -953,6 +953,7 @@ router.get('/test/transaction', async (req, res, next) => {
  * @date - 23.12.22
  * @author - wkimdev
  * @desc - API 20번. 안드로이드 앱 SNS 회원가입/로그인 API [작업중]
+ *  -  res는 Express.js의 라우트 핸들러에 전달되는 두 번째 매개변수로, "response" 객체를 나타냅니다.
  * */
 router.post('/app/join/sns', async (req, res) => {
     // API 정보
@@ -967,38 +968,29 @@ router.post('/app/join/sns', async (req, res) => {
       return resCode.returnResponseCode(res, 1002, apiName, null, null);
     } 
   
-    // DB
-    const user = await userMngDB.addUserOrLogin(req.body, apiName);
+    // DB 로직 처리, 코드값만 응답처리하면 된다.
+    const result = await userMngDB.addUserOrLogin(req.body, apiName);
     
     logger.info({
         API: apiName,
-        user: user
+        result
     });
     
-    //DB에 해당 유저가 이미 존재 O => 로그인처리 응답
-    //DB에 해당 유저가 이미 존재 X => 회원가입처리 응답
-
-    //로그인 정보가 없으면 undefined가 뜨는게 맞나? 
-    if (!user) {
-        //회원가입처리
-        
+    //* @todo - userinfo를 받아와야함!
+    // response 성공시 응답처리
+    // 2000: 성공, 객체를 같이 응답시켜야 되는데... 
+    // 1001: 인증실패
+    // 1005: 빈값일때 응답값
+    if (result.responseCode == 2000) {
+        const plusResult = {
+            userInfo: result.userInfo,
+        };
+      return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
+    } else if (result.responseCode == 1005) {
+      return resCode.returnResponseCode(res, 1005, apiName, null, null);
     } else {
-        //로그인처리
+      return resCode.returnResponseCode(res, 9999, apiName, null, null);
     }
-
-
-
-
-
-    // response
-    // if (user == 2000) {
-    //   // 성공시 응답받는 곳
-    //   return resCode.returnResponseCode(res, 2000, apiName, null, null);
-    // } else if (user == 1005) {
-    //   return resCode.returnResponseCode(res, 1005, apiName, null, null);
-    // } else {
-    //   return resCode.returnResponseCode(res, 9999, apiName, null, null);
-    // }
   
 })
 

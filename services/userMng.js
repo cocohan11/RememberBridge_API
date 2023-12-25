@@ -653,6 +653,24 @@ userMng.prototype.addUser = (query, apiName) => {
 
 //ㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡㅡ
 
+// 
+/** 안드로이드에서 SNS 회원가입 쿼리문 작성 */
+async function insertUserBySNS(query, apiName) {
+    logger.debug({
+        API: 'insertUserBySNS 실행 !',
+        params: query, 
+    });
+
+    return {
+        text: `INSERT INTO USER 
+                (user_email, user_state, user_name, login_sns_type, create_at) 
+                VALUES (?, 'N', ?, ?, now())`,
+        params: [query.user_email, query.user_name, query.login_sns_type],
+    };
+}
+
+
+
 /** 안드로이드에서 SNS 회원가입 및 로그인 */
 userMng.prototype.addUserOrLogin = async (query, apiName) => {
     logger.debug({
@@ -660,56 +678,38 @@ userMng.prototype.addUserOrLogin = async (query, apiName) => {
         params: query, 
     });
 
-    const user_info = await mySQLQuery(queryGetUser(query, apiName));
+    let userInfo, resultUserInfo;
+    const user_info = await mySQLQuery2(queryGetUser(query, apiName));
 
-    // 회원조회 후 회원정보가 없으면 회원가입 처리
-    if (!user_info[0]) {
+    try {
+        // 회원조회 후 회원정보가 없으면 회원가입 처리함
+        if (!user_info[0]) {
+            const insertUserInfo = await mySQLQuery2
+                (await insertUserBySNS(query, apiName));
+            userInfo = insertUserInfo[0]
+        } else { //회원정보가 DB에 있으면 로그인 처리
+            userInfo = user_info[0]
+        }
 
+        resultUserInfo = selectUserInfo(userInfo, apiName);
 
+        return {
+            responseCode: 2000,
+            userInfo: resultUserInfo
+        };
+    } catch (error) {
+        // 에러 로깅
+        logger.error({
+            API: apiName,
+            error: error
+        });
+        // 에러 발생 시 응답 처리
+        return {
+            responseCode: 9999,
+            userInfo: {}
+        };
     }
-
-    return resulst = {
-        user_info: user_info[0],
-        space_info: space_info,
-    };
-
-
-
-    // 회원조회 후 회원정보가 있으면 로그인 처리
-    
-
-
-    // 회원가입 쿼리문 작성
-    // async function insertUser(query) {
-    //     user_pw = await toHashPassword(query.user_pw, apiName);
-
-    //     // 만들 조건문 : sns회원인지 일반회원인지
-    //     // 비번 해싱
-
-    //     return {
-    //         text: `INSERT INTO USER 
-    //                 (user_email, user_pw, user_state, user_name, login_sns_type, create_at) 
-    //                 VALUES (?, ?, 'N', ?, ?, now())`,
-    //         params: [query.user_email, user_pw, query.user_name, query.login_sns_type],
-    //     };
-    // }
-
-    // // 회원가입 쿼리문 날리기
-    // return new Promise(async (resolve, reject) => {
-    //     mySQLQuery(await insertUser(query, apiName)) // 쿼리문 실행 / await로 동기화
-    //         .then((res) => {
-    //             return resolve(2000); // USER테이블에 회원가입 완료
-    //         })
-    //         .catch((err) => {
-    //             logger.error({
-    //                 API: apiName,
-    //                 error: err
-    //             });
-    //             return resolve(9999);
-    //         });
-    // });
 };
-
 
 
 // 회원탈퇴 - 한 유저의 일기id조회
@@ -1611,12 +1611,16 @@ function mySQLQuery(query) {
 }
 
 
-//12.24 김위작성 - async/await코드 리팩토링
-// 재사용할 쿼리 함수
+/** 
+ * @desc 12.24 김위작성 - async/await코드로 리팩토링 
+ * => 이 함수를 호출할땐, 비동기로 호출해야함: ex) (await insertUserBySNS(query, apiName)); * 
+*/
 mySQLQuery2 = async (query) => {
+    //커넥션한 쿼리를 promise로 비동기로 반환한 뒤 예외처리를 진행한다.
     const queryPromise = util.promisify(connection.query).bind(connection);   
     try {
         // query 실행
+        //query.params가 빈값으로 들어감
         const rows = await queryPromise(query.text, query.params);
         return rows;
     } catch (err) {
