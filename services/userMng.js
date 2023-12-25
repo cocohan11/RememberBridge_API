@@ -593,15 +593,28 @@ userMng.prototype.loginUser = (query, apiName) => {
                     query_user_pw: query.user_pw, 
                 });
 
-                isMatch = await matchHashPassword(query.user_pw, res[res.length-1].user_pw); // 임시) 해당이멜로조회된 제일 최신 user를 리턴한다.
-                
                 logger.debug({
-                    API: apiName,
-                    'res[0].user_pw': res[res.length - 1].user_pw, 
-                    isMatch: isMatch,
-                });
-                if (isMatch == true) return resolve(selectUserInfo(res[res.length-1])); 
-                if (isMatch == false) return resolve(2009); 
+                    user_pw_test: query.user_pw
+                })
+
+                //12.25 김위) 안드로이드앱에서 로그인 인증실패시 오류리턴을 위한 예외처리 추가
+                if (res && res.length > 0) {
+                    isMatch = await matchHashPassword(query.user_pw, res[res.length-1].user_pw); // 임시) 해당이멜로조회된 제일 최신 user를 리턴한다.
+                } else {
+                    isMatch = false;
+                }
+                
+                
+                if (res && res.length > 0) {
+                    logger.debug({
+                        API: apiName,
+                        'res[0].user_pw': res[res.length - 1].user_pw, 
+                        isMatch: isMatch,
+                    });
+                }
+                
+                if (isMatch == true) return resolve(selectUserInfo(res[res.length-1]));
+                if (isMatch == false) return resolve(2009); //실패 리턴
             })
             .catch((err) => {
                 logger.error({
