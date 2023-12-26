@@ -23,6 +23,74 @@ const s3 = new AWS.S3();
 function storybookMng() { }
 
 
+/** 스토리북 수정 
+ * 1. 스토리북 책 수정
+ * 2. 스토리 수정
+ * 3. 프롬프트 수정
+ */
+storybookMng.prototype.editBook = async (query, apiName) => {
+
+  logger.debug({
+    API: apiName,
+    query: query,
+  });
+
+
+  try {
+    connection.beginTransaction() // 트랜잭션 적용 시작
+   
+
+    // 1. 책정보 수정 - update 됐는지 확인
+    const res1 = await mySQLQuery(changeBook(query, apiName));
+    logger.debug({
+      API: apiName,
+      res1: res1,
+      affectedRows: res1.affectedRows,
+    });
+    if (res1.affectedRows != 1) return 1005;
+
+
+
+    // 3.스토리 수정
+    for (let i = 1; i <= 6; i++) {
+      const page_content = query.book_content[`page${i}`];
+      const res3 = await mySQLQuery(changeStrories(query, i, page_content, query.book_id, apiName));
+      logger.debug({
+        API: apiName,
+        i: i,
+        res3: res3,
+      });
+    }
+
+
+    // 4. 프롬프트 수정
+    for (let i = 1; i <= 6; i++) {
+      let image_prompt = query.image_prompt[`page${i}`];
+      if(i == 0) image_prompt = query.image_prompt[`cover_page`];
+      const res4 = await mySQLQuery(changePrompt(query, i, image_prompt, query.book_id, apiName));
+      logger.debug({
+        API: apiName,
+        i: i,
+        res4: res4,
+      });
+    }
+
+
+    connection.commit() // 커밋
+    return 2000
+
+  } catch (err) {
+    console.log("롤백 err : "+err)
+    connection.rollback() // 롤백
+    return 9999;
+  
+  } finally {
+    // connection.end() // connection 회수  -> mysql 에러 원인
+  }
+
+}; 
+
+
 /** 이미지 편집화면 조회
  * - 사용자가 만든 모든 책의 목록을 보여준다. 
  */
@@ -318,6 +386,66 @@ function getBookNameDesc(res) {
     subChar: subChar,
     subChar2: subChar2
   }
+}
+
+
+// 이미지 프롬프트 수정
+function changePrompt(query, book_page, image_prompt, book_id, apiName) {
+  
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "changePrompt()",
+  });
+
+  return {
+    text: `
+            UPDATE STORYBOOK_PROMPT
+            SET image_prompt = ?
+            WHERE book_id = ? and book_page = ?
+          `,
+    params: [image_prompt, book_id, book_page],
+  };
+}
+
+
+// 스토리 수정
+function changeStrories(query, book_page, book_content, book_id, apiName) {
+  
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "changeStrories()",
+  });
+
+  return {
+    text: `
+            UPDATE STORYBOOK_STORY
+            SET book_content = ?
+            WHERE book_id = ? and book_page = ?
+          `,
+    params: [book_content, book_id, book_page],
+  };
+}
+
+
+// 반려견 프사 수정 쿼리문 작성
+function changeBook(query, url, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    url: url,
+    function: "changeBook()",
+  });
+
+  return {
+    text: `
+          UPDATE STORYBOOK
+          SET book_name = ?, book_outline = ?
+          WHERE book_id = ?
+          `,
+    params: [query.book_name, query.book_outline, query.book_id],
+  };
 }
 
 

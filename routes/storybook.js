@@ -6,6 +6,32 @@ const resCode = require('../util/resCode');
 const logger = require('../winston/logger');
 
 
+/** 글 편집 수정 API */
+router.post('/story/change', async (req, res) => {
+    // API 정보
+    const apiName = '글 편집 수정 API';
+    logger.http({
+        API: apiName,
+        reqBody: req.body,
+    });
+
+    // 파라미터값 누락 확인
+    if (!req.body.book_id || !req.body.book_name|| !req.body.book_outline|| !req.body.book_content|| !req.body.image_prompt) {
+        return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    }
+
+    // service
+    const result = await storybookMng.editBook(req.body, apiName);
+    logger.info({
+        API: apiName,
+        result: result,
+    });
+
+    // response
+    return resCode.returnResponseCode(res, result, apiName, null, null);
+});
+
+
 /** 이미지 편집화면 조회 API */
 router.get('/imageUrl/:book_id?', async (req, res) => {
     // API 정보
