@@ -23,6 +23,48 @@ const s3 = new AWS.S3();
 function storybookMng() { }
 
 
+
+
+/** 이미지 URL 개별 수정
+ */
+storybookMng.prototype.editImageUrl = async (query, apiName) => {
+
+  logger.debug({
+    API: apiName,
+    query: query,
+  });
+
+
+  try {
+    connection.beginTransaction() // 트랜잭션 적용 시작
+   
+
+    // 1. 책정보 수정 - update 됐는지 확인
+    const res1 = await mySQLQuery(changeImageUrl(query, apiName));
+    logger.debug({
+      API: apiName,
+      res1: res1,
+      affectedRows: res1.affectedRows,
+    });
+    if (res1.affectedRows != 1) return 1005;
+
+
+    connection.commit() // 커밋
+    return 2000
+
+  } catch (err) {
+    console.log("롤백 err : "+err)
+    connection.rollback() // 롤백
+    return 9999;
+  
+  } finally {
+    // connection.end() // connection 회수  -> mysql 에러 원인
+  }
+
+}; 
+
+
+
 /** 스토리북 수정 
  * 1. 스토리북 책 수정
  * 2. 스토리 수정
@@ -389,6 +431,26 @@ function getBookNameDesc(res) {
 }
 
 
+// 이미지 URL 개별 수정
+function changeImageUrl(query, url, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    url: url,
+    function: "changeImageUrl()",
+  });
+
+  return {
+    text: `
+          UPDATE STORYBOOK_IMAGE
+          SET img_url = ?
+          WHERE img_id = ? and book_id = ? 
+          `,
+    params: [query.img_url, query.img_id, query.book_id],
+  };
+}
+
+
 // 이미지 프롬프트 수정
 function changePrompt(query, book_page, image_prompt, book_id, apiName) {
   
@@ -429,7 +491,7 @@ function changeStrories(query, book_page, book_content, book_id, apiName) {
 }
 
 
-// 반려견 프사 수정 쿼리문 작성
+// 책 줄거리, 이름 수정
 function changeBook(query, url, apiName) {
   logger.debug({
     API: apiName + " 쿼리문 작성",
