@@ -27,8 +27,9 @@ router.post('/imageUrl/change', async (req, res) => {
         result: result,
     });
 
+    plusResult = { img_url: req.body.img_url }
     // response
-    return resCode.returnResponseCode(res, result, apiName, null, null);
+    return resCode.returnResponseCode(res, result, apiName, 'addToResult', plusResult);
 });
 
 
