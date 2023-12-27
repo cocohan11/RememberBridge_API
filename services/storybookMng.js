@@ -349,7 +349,20 @@ storybookMng.prototype.saveImageUrl = async (query, apiName) => {
   });
 
   try {
-    const result = await mySQLQuery(saveImageUrl(query, apiName));
+    const pageMapping = {
+      'cover_page': 0,
+      'page1': 1,
+      'page2': 2,
+      'page3': 3,
+      'page4': 4,
+      'page5': 5,
+    };
+    let page = pageMapping[query.book_page] || 0;
+    logger.debug({
+      API: apiName,
+      page: page,
+    });
+    const result = await mySQLQuery(saveImageUrl(query, page, apiName));
     img_id = result.insertId;
     if (img_id == null) return 9999;
     return 2000;
@@ -635,7 +648,7 @@ function getAllBooks(query, apiName) {
 
 
 // 이미지 url 저장
-function saveImageUrl(query, apiName) {
+function saveImageUrl(query, page, apiName) {
   
   logger.debug({
     API: apiName + " 쿼리문 작성",
@@ -649,7 +662,7 @@ function saveImageUrl(query, apiName) {
             (book_id, book_page, img_url, create_at) 
             VALUES (?, ?, ?, now())
           `,
-    params: [query.book_id, query.book_page, query.img_url],
+    params: [query.book_id, page, query.img_url],
   };
 }
 

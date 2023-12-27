@@ -160,7 +160,7 @@ router.post('/imageUrl', async (req, res) => {
     });
 
     // 파라미터값 누락 확인
-    if (!req.body.book_id || !req.body.img_url) {
+    if (!req.body.book_id || !req.body.img_url|| !req.body.book_page) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
