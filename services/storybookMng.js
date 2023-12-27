@@ -389,11 +389,22 @@ storybookMng.prototype.getAllBooks = async (query, apiName) => {
 
   // 이미지 url 저장 
   const res = await mySQLQuery(getAllBooks(query, apiName));
+
+  // books 배열을 숫자로 묶어진 객체로 변경
+  const modifiedBooks = {};
+  res.forEach((book, index) => {
+    modifiedBooks[index] = {
+      book_id: book.book_id,
+      book_name: book.book_name,
+      img_url: book.img_url,
+    };
+  });
+
   logger.debug({
     API: apiName,
     res: res,
   });
-  return res;
+  return { books :modifiedBooks};
 }; 
 
 
