@@ -6,6 +6,32 @@ const resCode = require('../util/resCode');
 const logger = require('../winston/logger');
 
 
+/** 책제목 수정 API */
+router.post('/title/change', async (req, res) => {
+    // API 정보
+    const apiName = '책제목 수정 API';
+    logger.http({
+        API: apiName,
+        reqBody: req.body,
+    });
+
+    // 파라미터값 누락 확인
+    if (!req.body.book_id || !req.body.space_id|| !req.body.book_name) {
+        return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    }
+
+    // service
+    const result = await storybookMng.editTitle(req.body, apiName);
+    logger.info({
+        API: apiName,
+        result: result,
+    });
+
+    // response
+    return resCode.returnResponseCode(res, result, apiName, null, null);
+});
+
+
 /** 스토리 개별 수정 API */
 router.post('/story/change/each', async (req, res) => {
     // API 정보
