@@ -25,6 +25,39 @@ function storybookMng() { }
 
 
 
+/** 작가이름 수정
+ */
+storybookMng.prototype.editWriter = async (query, apiName) => {
+
+  logger.debug({
+    API: apiName,
+    query: query,
+  });
+
+  try {
+    connection.beginTransaction() // 트랜잭션 적용 시작
+   
+
+    const res1 = await mySQLQuery(changeWriter(query, apiName));
+    logger.debug({
+      API: apiName,
+      res1: res1,
+      affectedRows: res1.affectedRows,
+    });
+    if (res1.affectedRows != 1) return 1005;
+
+
+    connection.commit() // 커밋
+    return 2000
+
+  } catch (err) {
+    console.log("롤백 err : "+err)
+    connection.rollback() // 롤백
+    return 9999;
+  } 
+}; 
+
+
 /** 책제목 수정
  */
 storybookMng.prototype.editTitle = async (query, apiName) => {
@@ -38,7 +71,6 @@ storybookMng.prototype.editTitle = async (query, apiName) => {
     connection.beginTransaction() // 트랜잭션 적용 시작
    
 
-    // 1. 책정보 수정 - update 됐는지 확인
     const res1 = await mySQLQuery(changeTitle(query, apiName));
     logger.debug({
       API: apiName,
@@ -72,7 +104,6 @@ storybookMng.prototype.editStory = async (query, apiName) => {
     connection.beginTransaction() // 트랜잭션 적용 시작
    
 
-    // 1. 책정보 수정 - update 됐는지 확인
     const res1 = await mySQLQuery(changeStory(query, apiName));
     logger.debug({
       API: apiName,
@@ -522,6 +553,26 @@ function getBookNameDesc(res) {
     subChar: subChar,
     subChar2: subChar2
   }
+}
+
+
+// 작가이름 수정
+function changeWriter(query, url, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    url: url,
+    function: "changeWriter()",
+  });
+
+  return {
+    text: `
+          UPDATE STORYBOOK
+          SET book_writer = ?
+          WHERE space_id = ? and book_id = ? 
+          `,
+    params: [query.book_writer, query.space_id, query.book_id],
+  };
 }
 
 
