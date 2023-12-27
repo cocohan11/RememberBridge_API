@@ -356,6 +356,7 @@ storybookMng.prototype.saveImageUrl = async (query, apiName) => {
       'page3': 3,
       'page4': 4,
       'page5': 5,
+      'page6': 6,
     };
     let page = pageMapping[query.book_page] || 0;
     logger.debug({
