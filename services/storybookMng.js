@@ -201,43 +201,43 @@ storybookMng.prototype.editStory = async (query, apiName) => {
 
 
 
-/** 이미지 URL 개별 수정
- */
-storybookMng.prototype.editImageUrl = async (query, apiName) => {
+// /** 이미지 URL 개별 수정
+//  */
+// storybookMng.prototype.editImageUrl = async (query, apiName) => {
 
-  logger.debug({
-    API: apiName,
-    query: query,
-  });
+//   logger.debug({
+//     API: apiName,
+//     query: query,
+//   });
 
 
-  try {
-    connection.beginTransaction() // 트랜잭션 적용 시작
+//   try {
+//     connection.beginTransaction() // 트랜잭션 적용 시작
    
 
-    // 1. 책정보 수정 - update 됐는지 확인
-    const res1 = await mySQLQuery(changeImageUrl(query, apiName));
-    logger.debug({
-      API: apiName,
-      res1: res1,
-      affectedRows: res1.affectedRows,
-    });
-    if (res1.affectedRows != 1) return 1005;
+//     // 1. 책정보 수정 - update 됐는지 확인
+//     const res1 = await mySQLQuery(changeImageUrl(query, apiName));
+//     logger.debug({
+//       API: apiName,
+//       res1: res1,
+//       affectedRows: res1.affectedRows,
+//     });
+//     if (res1.affectedRows != 1) return 1005;
 
 
-    connection.commit() // 커밋
-    return 2000
+//     connection.commit() // 커밋
+//     return 2000
 
-  } catch (err) {
-    console.log("롤백 err : "+err)
-    connection.rollback() // 롤백
-    return 9999;
+//   } catch (err) {
+//     console.log("롤백 err : "+err)
+//     connection.rollback() // 롤백
+//     return 9999;
   
-  } finally {
-    // connection.end() // connection 회수  -> mysql 에러 원인
-  }
+//   } finally {
+//     // connection.end() // connection 회수  -> mysql 에러 원인
+//   }
 
-}; 
+// }; 
 
 
 
@@ -516,6 +516,8 @@ storybookMng.prototype.createbook = async (query, apiName) => {
 /** 이미지 url 저장
  * - AI서버에서 만들어서 S3에 저장된 상태
  * - url만 DB에 저장한다. 
+ * 1. url저장되어있는지 확인
+ * 2. 책저장(insert문) or 책업데이트(update문)
  */
 storybookMng.prototype.saveImageUrl = async (query, apiName) => {
 
@@ -525,13 +527,48 @@ storybookMng.prototype.saveImageUrl = async (query, apiName) => {
   });
 
   try {
-    const result = await mySQLQuery(saveImageUrl(query, apiName));
-    img_id = result.insertId;
-    if (img_id == null) return 9999;
-    return 2000;
+    connection.beginTransaction() // 트랜잭션 적용 시작
+         
+
+    // 1. url저장되어있는지 확인
+    const res1 = await mySQLQuery(findImageUrl(query, apiName));
+    logger.debug({
+      API: apiName,
+      res1: res1,
+      res1length: res1.length,
+    });
+
+
+    if (res1.length == 0) {
+      if (query.book_page > 6) return 1005; // 예외처리 - 6페이지까지만 생성가능
+      const res2 = await mySQLQuery(saveImageUrl(query, apiName));
+      img_id = res2.insertId;
+      logger.debug({
+        API: apiName,
+        res2: res2,
+        affectedRows: res2.affectedRows,
+      });
+      if (img_id == null) return 9999;
+      connection.commit() // 커밋
+      return 2000;
+
+
+    } else {
+      const res3 = await mySQLQuery(changeImageUrl(query, apiName));
+      logger.debug({
+        API: apiName,
+        res3: res3,
+        affectedRows: res3.affectedRows,
+      });
+      if (res3.affectedRows == 0) return 1005;
+      connection.commit() // 커밋
+      return 2000;
+    }
+
 
   } catch (err) {
-    console.log("롤백 err : "+err)
+    console.log("롤백 err : " + err)
+    connection.rollback() // 롤백
     return 9999;
   } 
 
@@ -615,6 +652,27 @@ function getBookNameDesc(res) {
     subChar: subChar,
     subChar2: subChar2
   }
+}
+
+
+
+// 이미지 url 조회
+function findImageUrl(query, apiName) {
+  
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "findImageUrl()",
+  });
+
+  return {
+    text: `
+          select *
+          from STORYBOOK_IMAGE 
+          where book_id = ? and book_page = ?
+          `,
+    params: [query.book_id, query.book_page],
+  };
 }
 
 
@@ -767,9 +825,9 @@ function changeImageUrl(query, url, apiName) {
     text: `
           UPDATE STORYBOOK_IMAGE
           SET img_url = ?
-          WHERE img_id = ? and book_id = ? 
+          WHERE book_page = ? and book_id = ? 
           `,
-    params: [query.img_url, query.img_id, query.book_id],
+    params: [query.img_url, query.book_page, query.book_id],
   };
 }
 
