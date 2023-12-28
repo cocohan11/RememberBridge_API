@@ -265,7 +265,7 @@ router.post('/imageUrl', async (req, res) => {
     });
 
     // 파라미터값 누락 확인
-    if (!req.body.book_id || !req.body.img_url|| req.body.book_page == null) {
+    if (!req.body.book_id || !req.body.img_url|| !req.body.S3key|| req.body.book_page == null) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 

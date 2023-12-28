@@ -824,10 +824,10 @@ function changeImageUrl(query, url, apiName) {
   return {
     text: `
           UPDATE STORYBOOK_IMAGE
-          SET img_url = ?
+          SET img_url = ?, s3key = ?
           WHERE book_page = ? and book_id = ? 
           `,
-    params: [query.img_url, query.book_page, query.book_id],
+    params: [query.img_url, query.S3key, query.book_page, query.book_id],
   };
 }
 
@@ -1043,10 +1043,10 @@ function saveImageUrl(query, apiName) {
   return {
     text: `
             INSERT INTO STORYBOOK_IMAGE 
-            (book_id, book_page, img_url, create_at) 
-            VALUES (?, ?, ?, now())
+            (book_id, book_page, img_url, bucket, s3key, create_at) 
+            VALUES (?, ?, ?, ?, ?, now())
           `,
-    params: [query.book_id, query.book_page, query.img_url],
+    params: [query.book_id, query.book_page, query.img_url, "rb2web-storybook", query.S3key],
   };
 }
 
