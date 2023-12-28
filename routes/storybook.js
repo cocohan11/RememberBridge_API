@@ -17,7 +17,7 @@ router.post('/remove', async (req, res) => {
     });
 
     // 파라미터값 누락 확인
-    if (!req.body.book_id || !req.body.space_id) {
+    if (!req.body.book_id) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
@@ -29,7 +29,7 @@ router.post('/remove', async (req, res) => {
     });
 
     // response
-    // return resCode.returnResponseCode(res, result, apiName, null, null);
+    return resCode.returnResponseCode(res, result, apiName, null, null);
 });
 
 

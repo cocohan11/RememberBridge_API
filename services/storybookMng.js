@@ -44,60 +44,107 @@ storybookMng.prototype.deleteBook = async (query, apiName) => {
    
 
     // 1. 책정보 삭제
-    // const res1 = await mySQLQuery(deleteBook(query, apiName));
-    // logger.debug({
-    //   API: apiName,
-    //   res1: res1,
-    //   affectedRows: res1.affectedRows,
-    // });
-    // if (res1.affectedRows != 1) return 1005;
+    const res1 = await mySQLQuery(deleteBook(query, apiName));
+    logger.debug({
+      API: apiName,
+      res1: res1,
+      affectedRows: res1.affectedRows,
+    });
+    if (res1.affectedRows != 1) return 1005;
+
+
+    
+    
+    // 캐릭터삭제 추가해야함
+
 
 
     // 2. 스토리 삭제
-    // const res2 = await mySQLQuery(deleteStory(query, apiName));
-    // logger.debug({
-    //   API: apiName,
-    //   res2: res2,
-    //   affectedRows: res2.affectedRows,
-    // });
-    // if (res2.affectedRows != 1) return 1005;
+    const res2 = await mySQLQuery(deleteStory(query, apiName));
+    logger.debug({
+      API: apiName,
+      res2: res2,
+      affectedRows: res2.affectedRows,
+    });
+    if (res2.affectedRows < 1) return 1005;
 
 
     // 3. 프롬프트 삭제
-    // const res3 = await mySQLQuery(deletePrompt(query, apiName));
-    // logger.debug({
-    //   API: apiName,
-    //   res3: res3,
-    //   affectedRows: res3.affectedRows,
-    // });
-    // if (res3.affectedRows < 1) return 1005;
-
-    
-    // 4. 이미지 url 삭제
-    const res4 = await mySQLQuery(deleteImgUrl(query, apiName));
+    const res3 = await mySQLQuery(deletePrompt(query, apiName));
     logger.debug({
       API: apiName,
-      res4: res4,
-      affectedRows: res4.affectedRows,
+      res3: res3,
+      affectedRows: res3.affectedRows,
     });
-    if (res4.affectedRows < 1) return 1005;
+    if (res3.affectedRows < 1) return 1005;
 
     
     // 5. S3 이미지파일 삭제
     // 5-1. 버킷, 키 조회하기
-    // 5-2. 버킷경로리스트 만들기
-    // 5-3. s3삭제함수 불러오기
+    const res5 = await mySQLQuery(findImgUrlForS3(query, apiName));
+    logger.debug({
+      API: apiName,
+      res5: res5,
+    });
 
 
+    // url이 있다면 사진파일 삭제
+    if (res5.length != 0) {
+      
+      
+      // 4. 이미지 url 삭제
+      const res4 = await mySQLQuery(deleteImgUrl(query, apiName));
+      logger.debug({
+        API: apiName,
+        res4: res4,
+        affectedRows: res4.affectedRows,
+      });
+      if (res4.affectedRows < 1) return 1005;
+      
+      
+      // 5-2. 버킷경로리스트 만들기
+      let bucketPathList = [];
+      let bucketPathList_exist = [];
+      for (let i = 0; i < res5.length; i++) {
+        // for문을 사용하여 locations 배열 내의 URL을 하나씩 처리
+        bucketPathList.push({
+          Bucket: res5[i].bucket,
+          Key: res5[i].s3key,
+        });
+        logger.debug({
+          i: i,
+          bucketPathList: bucketPathList,
+        });
+      }
+  
+  
+      // S3에 사진존재하는지 확인하기
+      const result = await S3function.checkfileExists(s3, bucketPathList, bucketPathList_exist, apiName);
+      logger.debug({
+        API: apiName,
+        result: result,
+      });
+      if (result == 1005) return 1005;
+      
+      
+      // 5-3. s3삭제함수 불러오기
+      const res_delete_s3 = await S3function.removeDiaryPhotosFromS3(s3, bucketPathList, apiName);
+      logger.debug({
+        API: apiName,
+        res_delete_s3: res_delete_s3,
+      });
+    } 
+    
 
-    // connection.commit() // 커밋
-    // return 2000
 
   } catch (err) {
     console.log("롤백 err : "+err)
     connection.rollback() // 롤백
     return 9999;
   } 
+  connection.commit() // 커밋
+  return 2000
+
 }; 
 
 
@@ -655,6 +702,23 @@ function getBookNameDesc(res) {
 }
 
 
+// 일기사진 조회 쿼리문 작성 2
+function findImgUrlForS3(query, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    query: query,
+    function: "findImgUrlForS3()",
+  });
+
+  return {
+    text: `
+            SELECT bucket, s3key
+            FROM STORYBOOK_IMAGE
+            where book_id = ?
+          `,
+    params: [query.book_id],
+  };
+}
 
 // 이미지 url 조회
 function findImageUrl(query, apiName) {
@@ -745,9 +809,9 @@ function deleteBook(query, url, apiName) {
   return {
     text: `
           DELETE FROM STORYBOOK
-          WHERE space_id = ? and book_id = ? 
+          WHERE book_id = ? 
           `,
-    params: [query.space_id, query.book_id],
+    params: [query.book_id],
   };
 }
 
