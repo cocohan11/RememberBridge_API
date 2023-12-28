@@ -805,9 +805,9 @@ function changeStory(query, url, apiName) {
     text: `
           UPDATE STORYBOOK_STORY
           SET book_content = ?
-          WHERE story_id = ? and book_id = ? 
+          WHERE book_page = ? and book_id = ? 
           `,
-    params: [query.book_content, query.story_id, query.book_id],
+    params: [query.book_content, query.book_page, query.book_id],
   };
 }
 

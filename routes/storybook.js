@@ -95,7 +95,7 @@ router.post('/story/change/each', async (req, res) => {
     });
 
     // 파라미터값 누락 확인
-    if (!req.body.book_id || !req.body.story_id|| !req.body.book_content) {
+    if (!req.body.book_id || !req.body.book_page|| !req.body.book_content) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
