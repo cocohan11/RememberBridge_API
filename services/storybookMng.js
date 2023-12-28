@@ -53,10 +53,14 @@ storybookMng.prototype.deleteBook = async (query, apiName) => {
     if (res1.affectedRows != 1) return 1005;
 
 
-    
-    
     // 캐릭터삭제 추가해야함
-
+    const res1_2 = await mySQLQuery(deleteChar(query, apiName));
+    logger.debug({
+      API: apiName,
+      res1_2: res1_2,
+      affectedRows: res1_2.affectedRows,
+    });
+    if (res1_2.affectedRows < 1) return 1005;
 
 
     // 2. 스토리 삭제
@@ -134,7 +138,6 @@ storybookMng.prototype.deleteBook = async (query, apiName) => {
         res_delete_s3: res_delete_s3,
       });
     } 
-    
 
 
   } catch (err) {
@@ -771,6 +774,25 @@ function deletePrompt(query, url, apiName) {
   return {
     text: `
           DELETE FROM STORYBOOK_PROMPT
+          WHERE book_id = ? 
+          `,
+    params: [query.book_id],
+  };
+}
+
+
+// 캐릭터 삭제
+function deleteChar(query, url, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    url: url,
+    function: "deleteChar()",
+  });
+
+  return {
+    text: `
+          DELETE FROM STORYBOOK_CHARACTER
           WHERE book_id = ? 
           `,
     params: [query.book_id],
