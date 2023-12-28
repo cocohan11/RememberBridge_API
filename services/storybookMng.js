@@ -25,6 +25,82 @@ function storybookMng() { }
 
 
 
+/** 책 1권 삭제
+ * 1. 책 정보 삭제
+ * 2. 스토리 삭제
+ * 3. 프롬프트 삭제
+ * 4. 이미지 url 삭제
+ * 5. s3 이미지파일 삭제
+ */
+storybookMng.prototype.deleteBook = async (query, apiName) => {
+
+  logger.debug({
+    API: apiName,
+    query: query,
+  });
+
+  try {
+    connection.beginTransaction() // 트랜잭션 적용 시작
+   
+
+    // 1. 책정보 삭제
+    // const res1 = await mySQLQuery(deleteBook(query, apiName));
+    // logger.debug({
+    //   API: apiName,
+    //   res1: res1,
+    //   affectedRows: res1.affectedRows,
+    // });
+    // if (res1.affectedRows != 1) return 1005;
+
+
+    // 2. 스토리 삭제
+    // const res2 = await mySQLQuery(deleteStory(query, apiName));
+    // logger.debug({
+    //   API: apiName,
+    //   res2: res2,
+    //   affectedRows: res2.affectedRows,
+    // });
+    // if (res2.affectedRows != 1) return 1005;
+
+
+    // 3. 프롬프트 삭제
+    // const res3 = await mySQLQuery(deletePrompt(query, apiName));
+    // logger.debug({
+    //   API: apiName,
+    //   res3: res3,
+    //   affectedRows: res3.affectedRows,
+    // });
+    // if (res3.affectedRows < 1) return 1005;
+
+    
+    // 4. 이미지 url 삭제
+    const res4 = await mySQLQuery(deleteImgUrl(query, apiName));
+    logger.debug({
+      API: apiName,
+      res4: res4,
+      affectedRows: res4.affectedRows,
+    });
+    if (res4.affectedRows < 1) return 1005;
+
+    
+    // 5. S3 이미지파일 삭제
+    // 5-1. 버킷, 키 조회하기
+    // 5-2. 버킷경로리스트 만들기
+    // 5-3. s3삭제함수 불러오기
+
+
+
+    // connection.commit() // 커밋
+    // return 2000
+
+  } catch (err) {
+    console.log("롤백 err : "+err)
+    connection.rollback() // 롤백
+    return 9999;
+  } 
+}; 
+
+
 /** 작가이름 수정
  */
 storybookMng.prototype.editWriter = async (query, apiName) => {
@@ -449,21 +525,7 @@ storybookMng.prototype.saveImageUrl = async (query, apiName) => {
   });
 
   try {
-    const pageMapping = {
-      'cover_page': 0,
-      'page1': 1,
-      'page2': 2,
-      'page3': 3,
-      'page4': 4,
-      'page5': 5,
-      'page6': 6,
-    };
-    let page = pageMapping[query.book_page] || 0;
-    logger.debug({
-      API: apiName,
-      page: page,
-    });
-    const result = await mySQLQuery(saveImageUrl(query, page, apiName));
+    const result = await mySQLQuery(saveImageUrl(query, apiName));
     img_id = result.insertId;
     if (img_id == null) return 9999;
     return 2000;
@@ -553,6 +615,82 @@ function getBookNameDesc(res) {
     subChar: subChar,
     subChar2: subChar2
   }
+}
+
+
+// 이미지 url 삭제
+function deleteImgUrl(query, url, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    url: url,
+    function: "deleteImgUrl()",
+  });
+
+  return {
+    text: `
+          DELETE FROM STORYBOOK_IMAGE
+          WHERE book_id = ? 
+          `,
+    params: [query.book_id],
+  };
+}
+
+
+// 프롬프트 삭제
+function deletePrompt(query, url, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    url: url,
+    function: "deletePrompt()",
+  });
+
+  return {
+    text: `
+          DELETE FROM STORYBOOK_PROMPT
+          WHERE book_id = ? 
+          `,
+    params: [query.book_id],
+  };
+}
+
+
+// 스토리 삭제
+function deleteStory(query, url, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    url: url,
+    function: "deleteStory()",
+  });
+
+  return {
+    text: `
+          DELETE FROM STORYBOOK_STORY
+          WHERE book_id = ? 
+          `,
+    params: [query.book_id],
+  };
+}
+
+
+// 책 1권 삭제
+function deleteBook(query, url, apiName) {
+  logger.debug({
+    API: apiName + " 쿼리문 작성",
+    params: query,
+    url: url,
+    function: "deleteBook()",
+  });
+
+  return {
+    text: `
+          DELETE FROM STORYBOOK
+          WHERE space_id = ? and book_id = ? 
+          `,
+    params: [query.space_id, query.book_id],
+  };
 }
 
 
@@ -836,7 +974,7 @@ function getAllBooks(query, apiName) {
 
 
 // 이미지 url 저장
-function saveImageUrl(query, page, apiName) {
+function saveImageUrl(query, apiName) {
   
   logger.debug({
     API: apiName + " 쿼리문 작성",
@@ -850,7 +988,7 @@ function saveImageUrl(query, page, apiName) {
             (book_id, book_page, img_url, create_at) 
             VALUES (?, ?, ?, now())
           `,
-    params: [query.book_id, page, query.img_url],
+    params: [query.book_id, query.book_page, query.img_url],
   };
 }
 

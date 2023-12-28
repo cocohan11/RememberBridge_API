@@ -6,6 +6,33 @@ const resCode = require('../util/resCode');
 const logger = require('../winston/logger');
 
 
+
+/** 책 1권 삭제 API */
+router.post('/remove', async (req, res) => {
+    // API 정보
+    const apiName = '책 1권 삭제 API';
+    logger.http({
+        API: apiName,
+        reqBody: req.body,
+    });
+
+    // 파라미터값 누락 확인
+    if (!req.body.book_id || !req.body.space_id) {
+        return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    }
+
+    // service
+    const result = await storybookMng.deleteBook(req.body, apiName);
+    logger.info({
+        API: apiName,
+        result: result,
+    });
+
+    // response
+    // return resCode.returnResponseCode(res, result, apiName, null, null);
+});
+
+
 /** 작가이름 수정 API */
 router.post('/writer/change', async (req, res) => {
     // API 정보
@@ -238,7 +265,7 @@ router.post('/imageUrl', async (req, res) => {
     });
 
     // 파라미터값 누락 확인
-    if (!req.body.book_id || !req.body.img_url|| !req.body.book_page) {
+    if (!req.body.book_id || !req.body.img_url|| req.body.book_page == null) {
         return resCode.returnResponseCode(res, 1002, apiName, null, null);
     }
 
