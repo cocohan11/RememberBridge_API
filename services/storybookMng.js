@@ -228,9 +228,22 @@ storybookMng.prototype.editStory = async (query, apiName) => {
 
   try {
     connection.beginTransaction() // 트랜잭션 적용 시작
+
+    // 형변환 str->int
+    const bookPage = query.book_page;
+    const pageMappings = {
+        'book_cover': 0,
+        'page1': 1,
+        'page2': 2,
+        'page3': 3,
+        'page4': 4,
+        'page5': 5,
+        'page6': 6
+    };
+    let page = pageMappings[bookPage] || -1;
    
 
-    const res1 = await mySQLQuery(changeStory(query, apiName));
+    const res1 = await mySQLQuery(changeStory(query, page, apiName));
     logger.debug({
       API: apiName,
       res1: res1,
@@ -879,11 +892,10 @@ function changeTitle(query, url, apiName) {
 
 
 // 스토리 개별 수정
-function changeStory(query, url, apiName) {
+function changeStory(query, page, apiName) {
   logger.debug({
     API: apiName + " 쿼리문 작성",
     params: query,
-    url: url,
     function: "changeStory()",
   });
 
@@ -893,7 +905,7 @@ function changeStory(query, url, apiName) {
           SET book_content = ?
           WHERE book_page = ? and book_id = ? 
           `,
-    params: [query.book_content, query.book_page, query.book_id],
+    params: [query.book_content, page, query.book_id],
   };
 }
 

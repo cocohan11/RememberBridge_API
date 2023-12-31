@@ -57,10 +57,13 @@ S3function.prototype.checkfileExists = async (s3, bucketPathList, bucketPathList
       });
   
       const res = await Promise.all(promises);
+      if(res[0] == 1005 ||res[1] == 1005 ) return 1005;
       logger.debug({
         API: apiName,
         res: res,
-        detail: `All files exist. Deleting...`,
+        res0: res[0],
+        res1: res[1],
+        detail: `All files exist. Deleting...f`,
         function: "checkfileExists()",
       });
       return 2000;
