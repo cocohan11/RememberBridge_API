@@ -1103,26 +1103,10 @@ function getAllBooks(query, apiName) {
 
   return {
     text: `
-            WITH RankedBooks AS (
-              SELECT
-                sb.book_id,
-                sb.book_name,
-                sbi.book_page,
-                sbi.img_url,
-                ROW_NUMBER() OVER (PARTITION BY sb.book_id, sbi.book_page ORDER BY sbi.create_at DESC) AS RowNum              FROM
-                STORYBOOK AS sb
-                INNER JOIN STORYBOOK_IMAGE AS sbi ON sbi.book_id = sb.book_id
-              WHERE
-                sb.space_id = ? AND sbi.book_page = 0
-            )
-            SELECT
-              book_id,
-              book_name,
-              img_url
-            FROM
-              RankedBooks
-            WHERE
-              RowNum = 1;
+          SELECT sb.book_id, sb.book_name, sbi.book_page, sbi.img_url
+          FROM STORYBOOK sb
+          LEFT JOIN STORYBOOK_IMAGE sbi ON sb.book_id = sbi.book_id AND sbi.book_page = 0
+          WHERE sb.space_id = ?;
           `,
     params: [query.space_id],
   };
