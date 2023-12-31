@@ -1105,7 +1105,13 @@ function getAllBooks(query, apiName) {
     text: `
           SELECT sb.book_id, sb.book_name, sbi.book_page, sbi.img_url
           FROM STORYBOOK sb
-          LEFT JOIN STORYBOOK_IMAGE sbi ON sb.book_id = sbi.book_id AND sbi.book_page = 0
+          LEFT JOIN (
+              SELECT book_id, book_page, img_url
+              FROM STORYBOOK_IMAGE
+              WHERE book_page = 0
+              ORDER BY create_at DESC -- 또는 사용 가능한 다른 날짜/시간 기준으로 정렬
+              LIMIT 1
+          ) sbi ON sb.book_id = sbi.book_id
           WHERE sb.space_id = ?;
           `,
     params: [query.space_id],
