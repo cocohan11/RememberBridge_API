@@ -548,8 +548,12 @@ storybookMng.prototype.createbook = async (query, apiName) => {
 
 
     // 4. 프롬프트 저장
-    for (let i = 1; i <= 6; i++) {
-      const image_prompt = query.image_prompt[`page${i}`];
+    for (let i = 0; i <= 6; i++) {
+      if (i == 0) {
+        image_prompt = query.image_prompt[`cover_page`]; 
+      } else {
+        const image_prompt = query.image_prompt[`page${i}`];
+      }
       const res4 = await mySQLQuery(savePrompt(query, i, image_prompt, book_id, apiName));
       logger.debug({
         API: apiName,
