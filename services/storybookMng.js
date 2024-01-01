@@ -137,6 +137,8 @@ storybookMng.prototype.deleteBook = async (query, apiName) => {
         API: apiName,
         res_delete_s3: res_delete_s3,
       });
+      if (res_delete_s3 == 1005) return 1005;
+
     } 
 
     
@@ -454,6 +456,7 @@ storybookMng.prototype.getAllStories = async (query, apiName) => {
   const res1 = await mySQLQuery(getBookInfo(query, apiName));
   const res2 = await mySQLQuery(getStories(query, apiName));
   const res3 = await mySQLQuery(getCharacters(query, apiName));
+  if (res1.length == 0 || res2.length == 0 || res3.length == 0) return 1005
 
 
   // 새로운 객체 생성
