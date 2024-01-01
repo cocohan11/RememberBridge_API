@@ -139,14 +139,16 @@ storybookMng.prototype.deleteBook = async (query, apiName) => {
       });
     } 
 
+    
+    connection.commit() // 커밋
+    return 2000
+
 
   } catch (err) {
     console.log("롤백 err : "+err)
     connection.rollback() // 롤백
     return 9999;
   } 
-  connection.commit() // 커밋
-  return 2000
 
 }; 
 
