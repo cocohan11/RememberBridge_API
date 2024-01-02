@@ -137,7 +137,13 @@ storybookMng.prototype.deleteBook = async (query, apiName) => {
         API: apiName,
         res_delete_s3: res_delete_s3,
       });
+      if (res_delete_s3 == 1005) return 1005;
+
     } 
+
+    
+    connection.commit() // 커밋
+    return 2000
 
 
   } catch (err) {
@@ -145,8 +151,6 @@ storybookMng.prototype.deleteBook = async (query, apiName) => {
     connection.rollback() // 롤백
     return 9999;
   } 
-  connection.commit() // 커밋
-  return 2000
 
 }; 
 
@@ -228,9 +232,22 @@ storybookMng.prototype.editStory = async (query, apiName) => {
 
   try {
     connection.beginTransaction() // 트랜잭션 적용 시작
+
+    // 형변환 str->int
+    const bookPage = query.book_page;
+    const pageMappings = {
+        'book_cover': 0,
+        'page1': 1,
+        'page2': 2,
+        'page3': 3,
+        'page4': 4,
+        'page5': 5,
+        'page6': 6
+    };
+    let page = pageMappings[bookPage] || -1;
    
 
-    const res1 = await mySQLQuery(changeStory(query, apiName));
+    const res1 = await mySQLQuery(changeStory(query, page, apiName));
     logger.debug({
       API: apiName,
       res1: res1,
@@ -439,6 +456,7 @@ storybookMng.prototype.getAllStories = async (query, apiName) => {
   const res1 = await mySQLQuery(getBookInfo(query, apiName));
   const res2 = await mySQLQuery(getStories(query, apiName));
   const res3 = await mySQLQuery(getCharacters(query, apiName));
+  if (res1.length == 0 || res2.length == 0 || res3.length == 0) return 1005
 
 
   // 새로운 객체 생성
@@ -530,8 +548,12 @@ storybookMng.prototype.createbook = async (query, apiName) => {
 
 
     // 4. 프롬프트 저장
-    for (let i = 1; i <= 6; i++) {
-      const image_prompt = query.image_prompt[`page${i}`];
+    for (let i = 0; i <= 6; i++) {
+      if (i == 0) {
+        image_prompt = query.image_prompt[`cover_page`]; 
+      } else {
+        const image_prompt = query.image_prompt[`page${i}`];
+      }
       const res4 = await mySQLQuery(savePrompt(query, i, image_prompt, book_id, apiName));
       logger.debug({
         API: apiName,
@@ -879,11 +901,10 @@ function changeTitle(query, url, apiName) {
 
 
 // 스토리 개별 수정
-function changeStory(query, url, apiName) {
+function changeStory(query, page, apiName) {
   logger.debug({
     API: apiName + " 쿼리문 작성",
     params: query,
-    url: url,
     function: "changeStory()",
   });
 
@@ -893,7 +914,7 @@ function changeStory(query, url, apiName) {
           SET book_content = ?
           WHERE book_page = ? and book_id = ? 
           `,
-    params: [query.book_content, query.book_page, query.book_id],
+    params: [query.book_content, page, query.book_id],
   };
 }
 
@@ -1091,26 +1112,14 @@ function getAllBooks(query, apiName) {
 
   return {
     text: `
-            WITH RankedBooks AS (
-              SELECT
-                sb.book_id,
-                sb.book_name,
-                sbi.book_page,
-                sbi.img_url,
-                ROW_NUMBER() OVER (PARTITION BY sb.book_id, sbi.book_page ORDER BY sbi.create_at DESC) AS RowNum              FROM
-                STORYBOOK AS sb
-                INNER JOIN STORYBOOK_IMAGE AS sbi ON sbi.book_id = sb.book_id
-              WHERE
-                sb.space_id = ? AND sbi.book_page = 0
-            )
-            SELECT
-              book_id,
-              book_name,
-              img_url
-            FROM
-              RankedBooks
-            WHERE
-              RowNum = 1;
+          SELECT sb.book_id, sb.book_name, sbi.book_page, sbi.img_url
+          FROM STORYBOOK sb
+          LEFT JOIN (
+              SELECT book_id, book_page, img_url
+              FROM STORYBOOK_IMAGE
+              WHERE book_page = 0
+          ) sbi ON sb.book_id = sbi.book_id
+          WHERE sb.space_id = ?;
           `,
     params: [query.space_id],
   };
