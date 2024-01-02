@@ -1,14 +1,19 @@
 const logger = require("../winston/logger");
 function resCode() {}
+
 /**
- * 에러코드로 응답을 받기 
- * 파라미터로 에러코드 넣으면 바로 json출력해주기
+ * 에러코드로 응답을 받기위한 공통 응답처리 함수
+ * 파라미터로 에러코드 넣으면 바로 json출력해주는 공통함수
  * @param res 
- * @param value - 응답코드
- * @param subMessage - 응답메세지
+ * @param code - 응답코드
+ * @param code - 응답메세지
+ * @param addField - 기존 result에 새로운값을 추가하기 위한 구분자(not data)
+ *                - @type: addToResult: key값을 별도로 추출해 result에 추가함. 
+ *                - @type: arraylist: key값을 별도로 추출하지 않고 result 에 바로 할당함. 
+ * @param subMessage(optional) - addField로 구분된 뒤 응답값에 추가되는 실제 data, 특별히 출력한 메세지가있는경우 기입, 없으면 null
  */
-resCode.prototype.returnResponseCode = (res, value, apiName, addField, subMessage) => { // subMessage:특별히 출력한 메세지가있는경우 기입, 없으면 null
-    switch (value) {
+resCode.prototype.returnResponseCode = (res, code, apiName, addField, subMessage) => { // subMessage:특별히 출력한 메세지가있는경우 기입, 없으면 null
+    switch (code) {
       
       case 2000:
         message = apiName + ' 성공' // ex) 3D 모델 재성성 성공

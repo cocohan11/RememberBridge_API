@@ -952,9 +952,9 @@ router.get('/test/transaction', async (req, res, next) => {
 /** 
  * @date - 23.12.22
  * @author - wkimdev
- * @desc - API 20번. 안드로이드 앱 SNS 회원가입/로그인 API [작업중]
+ * @desc - API 20번. 안드로이드 앱 SNS 회원가입/로그인 API
  *  -  res는 Express.js의 라우트 핸들러에 전달되는 두 번째 매개변수로, "response" 객체를 나타냅니다.
- * */
+ */
 router.post('/app/join/sns', async (req, res) => {
     // API 정보
     const apiName = '안드로이드 앱 SNS 회원가입/로그인 API';
