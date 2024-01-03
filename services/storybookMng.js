@@ -411,17 +411,24 @@ storybookMng.prototype.getAllImages = async (query, apiName) => {
     image_prompt[pageKey] = item.image_prompt;
   });
   
-  const img_url = {};
+  const img_url = {
+    cover_page: null,
+    page1: null,
+    page2: null,
+    page3: null,
+    page4: null,
+    page5: null, 
+    page6: null,
+  };
   res4.forEach((item) => {
     let pageKey = `page${item.book_page}`;
     if (pageKey == 'page0') pageKey = 'cover_page'
-    img_url[pageKey] = item.img_url;
-    if(item.img_url == undefined) img_url[pageKey] = '' // 빈값예외처리
+    img_url[pageKey] = item.img_url !== undefined ? item.img_url : null; // 값이 없으면 null 대입
   });
   
   logger.debug({
     API: apiName,
-    res1: res1,
+    res444: res4,
     // img_url: img_url,
     // res3: res3,
     // image_prompt: image_prompt
@@ -552,7 +559,7 @@ storybookMng.prototype.createbook = async (query, apiName) => {
       if (i == 0) {
         image_prompt = query.image_prompt[`cover_page`]; 
       } else {
-        const image_prompt = query.image_prompt[`page${i}`];
+        image_prompt = query.image_prompt[`page${i}`];
       }
       const res4 = await mySQLQuery(savePrompt(query, i, image_prompt, book_id, apiName));
       logger.debug({
@@ -1010,10 +1017,16 @@ function getImageUrls(query, apiName) {
 
   return {
     text: `
-          select promt_id, book_page, image_prompt
-          from STORYBOOK_PROMPT 
-          where book_id = ?
-          ORDER BY book_page
+            SELECT
+              si.img_id,
+              si.book_page,
+              COALESCE(si.img_url, '') AS img_url
+            FROM
+              STORYBOOK_IMAGE si
+            WHERE
+              si.book_id = ?
+            ORDER BY
+              si.book_page;
           `,
     params: [query.book_id],
   };
