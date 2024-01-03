@@ -417,7 +417,7 @@ storybookMng.prototype.getAllImages = async (query, apiName) => {
     page2: null,
     page3: null,
     page4: null,
-    page5: null,
+    page5: null, 
     page6: null,
   };
   res4.forEach((item) => {
