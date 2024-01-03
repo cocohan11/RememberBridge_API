@@ -6,6 +6,8 @@ const resCode = require('../util/resCode');
 const logger = require('../winston/logger');
 const multerMid = require('../util/multerMid'); // S3 multer 사진저장 미들웨어 별도 파일로 정리해둠
 
+const { DIARY_LIMIT } = process.env;
+
 // S3 사진저장경로 별 미들웨어
 const uploadForDog = multerMid('profile/dog'); // 'profile/dog' 경로를 사용하는 미들웨어 생성 // 반려견프사 (1장)
 const uploadForTimelines = multerMid('memory_space/timeline'); // 추억공간 타임라인 사진들 (여러 장)
@@ -446,7 +448,6 @@ router.get('/timeline/date/:dog_id?/:year?/:month?', async (req, res) => {
 });
 
 
-
 /** 일기 수정 API */
 router.post('/diary/edit', uploadForTimelines.array('diary_imgs', 5), async (req, res) => {
     // 최대 5장
@@ -712,6 +713,53 @@ router.post('/', uploadForDog.single('dog_prof_img'), async (req, res) => {
         return resCode.returnResponseCode(res, 9999, apiName, null, null);
     }
 });
+
+
+// ---------------------- 안드로이드용 API -----------------------
+
+/** 
+ * @date - 24.1.2
+ * @author - wkimdev
+ * @desc - 안드로이드용 타임라인 조회 API (1페이지당 데이터 7개씩 페이징 처리)
+ *  -  res는 Express.js의 라우트 핸들러에 전달되는 두 번째 매개변수로, "response" 객체를 나타냅니다.
+ */
+router.get('/app/diary/:user_id/:page', async (req, res) => {
+    // API 정보
+    const apiName = '안드로이드용 타임라인 조회 API 요청 파라미터값 확인';
+    logger.http({
+        API: apiName,
+        reqParams: req.params,
+    });
+    const userId = req.params.user_id
+    const page = parseInt(req.params.page) || 1; //기본페이지는 1
+    const pageSize = DIARY_LIMIT;
+
+    //파라미터값 누락 확인
+    if (!userId) {
+        return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    }
+
+    try {
+        const plusResult = 
+            await spaceMngDB.getDiaryWithPaging({ user_id: userId, page, pageSize }, apiName);
+
+        // 성공적으로 데이터를 가져온 경우 
+        return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
+
+    } catch (error) {
+        logger.error({
+            API: apiName,
+            error: error
+        });
+
+        // 오류 발생 시
+        return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    }
+})
+
+
+
+
 
 // ---------------------- TEST -----------------------
 //tests API

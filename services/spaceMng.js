@@ -11,6 +11,7 @@ const {
   AWS_S3_REGION, // 환경변수'
   NOTICE_LIMIT,
   TIMELINE_LIMIT,
+  DIARY_LIMIT,
 } = process.env;
 const AWS = require("aws-sdk");
 AWS.config.update({
@@ -50,7 +51,7 @@ spaceMng.prototype.setNoticeToRead = async (query, apiName) => {
  */
 spaceMng.prototype.getNotice = async (query, apiName) => {
 
-  const page = Number(query.page)-1;
+  const page = Number(query.page)-1; // 이 조건을 왜 두는 걸까???
   const limit = Number(NOTICE_LIMIT);
   const offset = limit * page;
   logger.debug({
@@ -2491,6 +2492,61 @@ async function getUserId(email, apiName) {
     params: [email],
   };
 }
+
+
+/** 안드로이드용 일기 조회
+ * 1. DB) DIARY 테이블에서 페이지징 처리 후 쿼리리턴
+ */
+async function selectDiaryWithPaging(query, apiName) {
+
+  //LIIMIT -> 한 페이지에 표시할 항목의 수 
+  //OFFSET -> 건너뛸 항목의 수를 나타내며, 페이지 번호와 페이지 크기를 기반으로 OFFSET를 계산할 수 있다. 
+
+  const page = Number(query.page);
+  const limit = Number(DIARY_LIMIT);
+  const offset = ((page - 1) * limit);
+
+  // logger.debug(`page : ${page}`);
+  // logger.debug(`limit : ${limit}`);
+  // logger.debug(`offset : ${offset}`);
+
+  //offset만 변화하면 된다.
+  return {
+    text: `SELECT * FROM DIARY WHERE user_id = ? LIMIT ? OFFSET ?;`,
+    params: [query.user_id, limit, offset],
+  }
+}
+
+
+
+/** 안드로이드용 일기 조회
+ * 1. DB) DIARY 테이블에서 diary_info 리턴
+ * 2. DB) [후순]DIARY_PHOTO 테이블에서 URL배열 리턴
+ */
+spaceMng.prototype.getDiaryWithPaging = async (query, apiName) => {
+  
+  // 1. DB) DIARY 테이블에서 diary_info 리턴
+  let diary_info = await mySQLQuery(await selectDiaryWithPaging(query, apiName));
+
+  if (!diary_info) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+  // 2. DB) DIARY_PHOTO 테이블에서 URL배열 리턴
+  // let diary_photos = await mySQLQuery(
+  //   await selectPhotoByOneDiary(query.diary_id, apiName)
+  // );
+  // logger.debug({
+  //   API: apiName,
+  //   diary_photos: diary_photos,
+  // });
+  //if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+
+  // API성공 시) 원하는 출력 모양을 추가함
+  return {
+    diary_info: diary_info,
+    //diary_photos: diary_photos,
+  };
+};
+
 
 // 재사용할 쿼리 함수
 function mySQLQuery(query, apiName) {
