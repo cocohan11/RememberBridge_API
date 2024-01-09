@@ -728,7 +728,8 @@ router.get('/app/diary/:user_id/:page', async (req, res) => {
     const apiName = '안드로이드용 타임라인 조회 API 요청 파라미터값 확인';
     logger.http({
         API: apiName,
-        reqParams: req.params,
+        userId: parseInt(req.params.user_id),
+        page: parseInt(req.params.page),
     });
     const userId = req.params.user_id
     const page = parseInt(req.params.page) || 1; //기본페이지는 1

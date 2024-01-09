@@ -2522,6 +2522,7 @@ async function selectDiaryWithPaging(query, apiName) {
 /** 안드로이드용 일기 조회
  * 1. DB) DIARY 테이블에서 diary_info 리턴
  * 2. DB) [후순]DIARY_PHOTO 테이블에서 URL배열 리턴
+ * 수정
  */
 spaceMng.prototype.getDiaryWithPaging = async (query, apiName) => {
   
