@@ -2512,8 +2512,12 @@ async function selectDiaryWithPaging(query, apiName) {
 
   //offset만 변화하면 된다.
   return {
-    text: `SELECT * FROM DIARY WHERE user_id = ? LIMIT ? OFFSET ?;`,
-    params: [query.user_id, limit, offset],
+    //text: `SELECT * FROM DIARY WHERE user_id = ? LIMIT ? OFFSET ?;`,
+    text: `SELECT * , (SELECT COUNT(*) FROM DIARY WHERE user_id = ?) AS total_count
+            FROM DIARY
+            WHERE user_id = ?
+            LIMIT ? OFFSET ?;`,
+    params: [query.user_id, query.user_id, limit, offset],
   }
 }
 
