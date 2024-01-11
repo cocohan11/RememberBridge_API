@@ -723,17 +723,18 @@ router.post('/', uploadForDog.single('dog_prof_img'), async (req, res) => {
  * @desc - 안드로이드용 타임라인 조회 API (1페이지당 데이터 7개씩 페이징 처리)
  *  -  res는 Express.js의 라우트 핸들러에 전달되는 두 번째 매개변수로, "response" 객체를 나타냅니다.
  */
-router.get('/app/diary/:user_id/:page', async (req, res) => {
+router.get('/app/diary/:user_id/:page/:limit', async (req, res) => {
     // API 정보
     const apiName = '안드로이드용 타임라인 조회 API 요청 파라미터값 확인';
     logger.http({
         API: apiName,
         userId: parseInt(req.params.user_id),
         page: parseInt(req.params.page),
+        limit: parseInt(req.params.limit),
     });
     const userId = req.params.user_id
     const page = parseInt(req.params.page) || 1; //기본페이지는 1
-    const pageSize = DIARY_LIMIT;
+    const limit = parseInt(req.params.limit);
 
     //파라미터값 누락 확인
     if (!userId) {
@@ -742,7 +743,7 @@ router.get('/app/diary/:user_id/:page', async (req, res) => {
 
     try {
         const plusResult = 
-            await spaceMngDB.getDiaryWithPaging({ user_id: userId, page, pageSize }, apiName);
+            await spaceMngDB.getDiaryWithPaging({ user_id: userId, page, limit }, apiName);
 
         // 성공적으로 데이터를 가져온 경우 
         return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);

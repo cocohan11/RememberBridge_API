@@ -2502,13 +2502,17 @@ async function selectDiaryWithPaging(query, apiName) {
   //LIIMIT -> 한 페이지에 표시할 항목의 수 
   //OFFSET -> 건너뛸 항목의 수를 나타내며, 페이지 번호와 페이지 크기를 기반으로 OFFSET를 계산할 수 있다. 
 
+  logger.debug(`query.page : ${query.page}`);
+  logger.debug(`query.limit : ${query.limit}`);
+
   const page = Number(query.page);
-  const limit = Number(DIARY_LIMIT);
+  //const limit = Number(DIARY_LIMIT);
+  const limit = Number(query.limit);
   const offset = ((page - 1) * limit);
 
-  // logger.debug(`page : ${page}`);
-  // logger.debug(`limit : ${limit}`);
-  // logger.debug(`offset : ${offset}`);
+  logger.debug(`page : ${page}`);
+  logger.debug(`limit : ${limit}`);
+  logger.debug(`offset : ${offset}`);
 
   //offset만 변화하면 된다.
   return {
