@@ -760,6 +760,46 @@ router.get('/app/diary/:user_id/:page/:limit', async (req, res) => {
 })
 
 
+/** 
+ * @date - 24.1.30
+ * @author - wkimdev
+ * @desc - 안드로이드용 타임라인 상세화면 조회 API
+ *  -  res는 Express.js의 라우트 핸들러에 전달되는 두 번째 매개변수로, "response" 객체를 나타냅니다.
+ */
+router.get('/app/diary/:diary_id', async (req, res) => {
+    // API 정보
+    const apiName = '안드로이드용 타임라인 조회 API 요청 파라미터값 확인';
+    logger.http({
+        API: apiName,
+        diaryId: parseInt(req.params.diary_id),
+    });
+    const diaryId = req.params.diary_id
+
+    //파라미터값 누락 확인
+    if (!diaryId) {
+        return resCode.returnResponseCode(res, 1002, apiName, null, null);
+    }
+
+    try {
+        //특정 다이어리 id로 요청시, 
+        const plusResult = 
+            await spaceMngDB.getDiaryWithPaging({ user_id: userId, page, limit }, apiName);
+
+        // 성공적으로 데이터를 가져온 경우 
+        return resCode.returnResponseCode(res, 2000, apiName, 'addToResult', plusResult);
+
+    } catch (error) {
+        logger.error({
+            API: apiName,
+            error: error
+        });
+
+        // 오류 발생 시
+        return resCode.returnResponseCode(res, 9999, apiName, null, null);
+    }
+})
+
+
 
 
 

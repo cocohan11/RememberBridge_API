@@ -2502,26 +2502,27 @@ async function selectDiaryWithPaging(query, apiName) {
   //LIIMIT -> 한 페이지에 표시할 항목의 수 
   //OFFSET -> 건너뛸 항목의 수를 나타내며, 페이지 번호와 페이지 크기를 기반으로 OFFSET를 계산할 수 있다. 
 
-  logger.debug(`query.page : ${query.page}`);
-  logger.debug(`query.limit : ${query.limit}`);
-
   const page = Number(query.page);
   //const limit = Number(DIARY_LIMIT);
   const limit = Number(query.limit);
   const offset = ((page - 1) * limit);
 
-  logger.debug(`page : ${page}`);
-  logger.debug(`limit : ${limit}`);
-  logger.debug(`offset : ${offset}`);
-
   //offset만 변화하면 된다.
   return {
-    //text: `SELECT * FROM DIARY WHERE user_id = ? LIMIT ? OFFSET ?;`,
-    text: `SELECT * , (SELECT COUNT(*) FROM DIARY WHERE user_id = ?) AS total_count
-            FROM DIARY
-            WHERE user_id = ?
-            ORDER BY create_at DESC
-            LIMIT ? OFFSET ?;` ,
+    // text: `SELECT * , (SELECT COUNT(*) FROM DIARY WHERE user_id = ?) AS total_count
+    //         FROM DIARY
+    //         WHERE user_id = ?
+    //         ORDER BY create_at DESC
+    //         LIMIT ? OFFSET ?;` ,
+    text: `SELECT D.*, 
+                (SELECT COUNT(*) FROM DIARY WHERE user_id = ?) AS total_count, 
+                GROUP_CONCAT(DP.photo_url) AS photo_urls
+            FROM DIARY D
+            LEFT JOIN DIARY_PHOTO DP ON D.diary_id = DP.diary_id
+            WHERE D.user_id = ?
+            GROUP BY D.diary_id
+            ORDER BY D.create_at DESC
+            LIMIT ? OFFSET ?;`,
     params: [query.user_id, query.user_id, limit, offset],
   }
 }
@@ -2540,20 +2541,22 @@ spaceMng.prototype.getDiaryWithPaging = async (query, apiName) => {
 
   if (!diary_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
+  //TODO) diary_id가 없음
+
   // 2. DB) DIARY_PHOTO 테이블에서 URL배열 리턴
-  let diary_photos = await mySQLQuery(
-    await selectPhotoByOneDiary(query.diary_id, apiName)
-  );
-  logger.debug({
-    API: apiName,
-    diary_photos: diary_photos,
-  });
-  if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+  // let diary_photos = await mySQLQuery(
+  //   await selectPhotoByOneDiary(query.diary_id, apiName)
+  // );
+  // logger.debug({
+  //   API: apiName,
+  //     diary_photos: diary_photos,
+  // });
+  // if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
 
   // API성공 시) 원하는 출력 모양을 추가함
   return {
     diary_info: diary_info,
-    diary_photos: diary_photos,
+    //diary_photos: diary_photos,
   };
 };
 
