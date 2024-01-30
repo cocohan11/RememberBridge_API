@@ -2520,7 +2520,8 @@ async function selectDiaryWithPaging(query, apiName) {
     text: `SELECT * , (SELECT COUNT(*) FROM DIARY WHERE user_id = ?) AS total_count
             FROM DIARY
             WHERE user_id = ?
-            LIMIT ? OFFSET ?;`,
+            ORDER BY create_at DESC
+            LIMIT ? OFFSET ?;` ,
     params: [query.user_id, query.user_id, limit, offset],
   }
 }
@@ -2540,19 +2541,19 @@ spaceMng.prototype.getDiaryWithPaging = async (query, apiName) => {
   if (!diary_info) return 1005; // 조회된 데이터가 없으면 1005 응답
 
   // 2. DB) DIARY_PHOTO 테이블에서 URL배열 리턴
-  // let diary_photos = await mySQLQuery(
-  //   await selectPhotoByOneDiary(query.diary_id, apiName)
-  // );
-  // logger.debug({
-  //   API: apiName,
-  //   diary_photos: diary_photos,
-  // });
-  //if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
+  let diary_photos = await mySQLQuery(
+    await selectPhotoByOneDiary(query.diary_id, apiName)
+  );
+  logger.debug({
+    API: apiName,
+    diary_photos: diary_photos,
+  });
+  if (diary_photos.length == 0) return 1005; // 조회된 데이터가 없으면 1005 응답
 
   // API성공 시) 원하는 출력 모양을 추가함
   return {
     diary_info: diary_info,
-    //diary_photos: diary_photos,
+    diary_photos: diary_photos,
   };
 };
 
