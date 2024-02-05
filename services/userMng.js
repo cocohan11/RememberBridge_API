@@ -676,9 +676,9 @@ async function insertUserBySNS(query, apiName) {
 
     return {
         text: `INSERT INTO USER 
-                (user_email, user_state, user_name, login_sns_type, create_at) 
-                VALUES (?, 'N', ?, ?, now())`,
-        params: [query.user_email, query.user_name, query.login_sns_type],
+                (user_email, user_state, user_name, login_sns_type, sns_id, create_at) 
+                VALUES (?, 'N', ?, ?, ?, now())`,
+        params: [query.user_email, query.user_name, query.login_sns_type, query.sns_id],
     };
 }
 
@@ -689,10 +689,14 @@ userMng.prototype.addUserOrLogin = async (query, apiName) => {
     logger.debug({
         API: apiName,
         params: query, 
-    });
-
+    });    
+    
     let userInfo, resultUserInfo;
-    const user_info = await mySQLQuery2(queryGetUser(query, apiName));
+
+    //1. 요청파람 sns_id와 sns_type이 DB에 있는지 조회한다 
+    //2. 조회해서 값이 있으면 로그인, 없으면 회원가입 처리한다. 
+
+    const user_info = await mySQLQuery2(queryGetUserFromApp(query, apiName));
 
     try {
         // 회원조회 후 회원정보가 없으면 회원가입 처리함
@@ -1400,6 +1404,27 @@ function queryGetUser_noPW(query, apiName) {
         params: [query.user_email],
     };
 }
+
+//안드로이드에서, SNS 회원가입 요청시 해당 계정이 존재하는지 확인하는 코드
+function queryGetUserFromApp(query, apiName) {
+    logger.debug({
+        API: apiName+' 쿼리문 작성',
+        params: query,
+        function: 'queryGetUserFromApp()',
+    });
+    return {
+        text: `SELECT user_id, user_email, user_state, user_name, user_prof_img, login_sns_type, create_at, update_at, leave_at
+                FROM USER
+                WHERE sns_id = ? AND login_sns_type = ?;`,
+        params: [
+            query.sns_id, query.login_sns_type
+        ]
+    };
+}
+
+
+
+
 
 // 마이페이지 유저사진 수정 쿼리문 작성
 // Params : user_email, user_prof_img

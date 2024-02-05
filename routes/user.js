@@ -964,7 +964,8 @@ router.post('/app/join/sns', async (req, res) => {
     });
    
     // 파라미터값 누락 확인
-    if (!req.body.user_email || !req.body.user_name || !req.body.login_sns_type) {
+    //params: [query.user_email, query.user_name, query.login_sns_type, query.sns_id],
+    if (!req.body.user_email || !req.body.user_name || !req.body.login_sns_type || !req.body.sns_id) {
       return resCode.returnResponseCode(res, 1002, apiName, null, null);
     } 
   
@@ -976,7 +977,6 @@ router.post('/app/join/sns', async (req, res) => {
         result
     });
     
-    //* @todo - userinfo를 받아와야함!
     // response 성공시 응답처리
     // 2000: 성공, 객체를 같이 응답시켜야 되는데... 
     // 1001: 인증실패
