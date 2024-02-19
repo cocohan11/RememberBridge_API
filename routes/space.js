@@ -1,3 +1,4 @@
+// github action test
 /** 추억공간 API */
 const express = require('express');
 const router = express.Router();
@@ -18,7 +19,7 @@ const uploadForBackground = multerMid('memory_space/background'); // 추억공�
 /** 댓글 삭제 API */
 router.get('/diary/comment/delete/:comment_id?', async (req, res) => {
     // API 정보
-    const apiName = '댓글 삭제 API';
+    const apiName = '댓글 삭제 API ';
     logger.http({
         API: apiName,
         reqParams: req.params,
