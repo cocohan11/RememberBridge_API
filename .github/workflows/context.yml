@@ -8,6 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-northeast-2
+      
     - name: Get GitHub Actions IP
       id: ip
       uses: haythem/public-ip@v1.2
@@ -18,5 +25,3 @@ jobs:
         --group-id ${{ secrets.PROD_AWS_SG_ID }} \
         --protocol tcp --port 22 \
         --cidr ${{ steps.ip.outputs.ipv4 }}/32
-      env:
-        AWS_REGION: ap-northeast-2
