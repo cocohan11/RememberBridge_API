@@ -22,4 +22,5 @@ jobs:
             cd myapp/server
             ls -al
             git pull
-            pm2 restart index.js
+            pm2 kill
+            pm2 start index.js
