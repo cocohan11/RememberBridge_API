@@ -8,6 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Get GitHub Actions IP
+      id: ip
+      uses: haythem/public-ip@v1.2
+      
     - name: "AWS_SG_ID"
       run: |
         aws ec2 authorize-security-group-ingress \
