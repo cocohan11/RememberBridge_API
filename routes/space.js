@@ -1,5 +1,4 @@
-// github action test2
-// 222relase 브랜치 체크아웃_222port
+// github action test22
 /** 추억공간 API */
 const express = require('express');
 const router = express.Router();
