@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: "context"
+    - name: "AWS_SG_ID"
       env:
-        COMMIT_ID: ${{ github.sha }}
-      run: echo "Comit id => $COMMIT_ID"
+        ID: ${{ secrets.PROD_AWS_SG_ID }}
+      run: echo "AWS id => $ID"
