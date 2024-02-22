@@ -19,3 +19,7 @@ jobs:
           port: 22 # 접속포트
           script: | # 실행할 스크립트
             ls -al
+            cd myapp/server
+            ls -al
+            git pull
+            pm2 restart index.js
