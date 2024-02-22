@@ -28,7 +28,7 @@ jobs:
       - name: send slack message
         uses: 8398a7/action-slack@v3
         with:
-          mention: 'here'
+          mention: '김한이'
           if_mention: failure
           status: ${{ job.status }}
           fields: workflow,job,commit,message,ref,author,took
