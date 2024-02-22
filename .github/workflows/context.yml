@@ -9,6 +9,8 @@ jobs:
 
     steps:
     - name: "AWS_SG_ID"
-      env:
-        ID: ${{ secrets.PROD_AWS_SG_ID }}
-      run: echo "AWS id => $ID"
+      run: |
+        aws ec2 authorize-security-group-ingress \
+        --group-id ${{ secrets.PROD_AWS_SG_ID }} \
+        --protocol tcp --port 22 \
+        --cidr ${{ steps.ip.outputs.ipv4 }}/32
