@@ -21,9 +21,9 @@ jobs:
             ls -al
             cd myapp/server
             ls -al
-            # git pull
-            # pm2 kill
-            # pm2 start index.js
+            git pull
+            pm2 kill
+            pm2 start index.js
 
       - name: send slack message
         uses: 8398a7/action-slack@v3
