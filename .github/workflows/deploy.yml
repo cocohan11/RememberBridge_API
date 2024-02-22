@@ -25,35 +25,13 @@ jobs:
             # pm2 kill
             # pm2 start index.js
 
-      - name: Notify Slack on Success
-        if: success() # 이 step은 job이 성공한 경우에만 실행된다.
-        id: slack-success
-        uses: slackapi/slack-github-action@v1.24.0
+      - name: send slack message
+        uses: 8398a7/action-slack@v3
         with:
-          payload: |
-            {
-              "channel": "채널 ID",
-              "attachments": [
-                {
-                  "color": "#36a64f", # 성공시 연두색
-                  "title": "${{ github.repository }}", # 제목은 깃헙 레포지토리
-                  "title_link": "https://github.com/${{github.repository}}", # 제목 클릭시 레포지토리로 이동
-                  "text": "GitHub Action 성공",
-                  "fields": [
-                    {
-                      "title": "Repository",
-                      "value": "${{ github.repository }}",
-                      "short": true
-                    },
-                    {
-                      "title": "Tag",
-                      "value": "${{ github.ref_name }}",
-                      "short": true
-                    }
-                  ]      
-                }
-              ]
-            }
+          mention: 'here'
+          if_mention: failure
+          status: ${{ job.status }}
+          fields: workflow,commit,message,author
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        if: always()
