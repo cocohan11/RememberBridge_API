@@ -21,9 +21,9 @@ jobs:
             ls -al
             cd myapp/server
             ls -al
-            git pull
-            pm2 kill
-            pm2 start index.js
+            # git pull
+            # pm2 kill
+            # pm2 start index.js
 
       - name: Notify Slack on Success
         if: success() # 이 step은 job이 성공한 경우에만 실행된다.
@@ -55,5 +55,5 @@ jobs:
               ]
             }
         env:
-          SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/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" #위에서 설정한 WEBHOOK UR
+          SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/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"
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
