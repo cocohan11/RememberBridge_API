@@ -18,3 +18,5 @@ jobs:
         --group-id ${{ secrets.PROD_AWS_SG_ID }} \
         --protocol tcp --port 22 \
         --cidr ${{ steps.ip.outputs.ipv4 }}/32
+      env:
+        AWS_REGION: ap-northeast-2
