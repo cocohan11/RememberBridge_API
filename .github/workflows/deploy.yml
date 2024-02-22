@@ -25,13 +25,13 @@ jobs:
             # pm2 kill
             # pm2 start index.js
 
-      - name: action-slack
+      - name: send slack message
         uses: 8398a7/action-slack@v3
         with:
+          mention: 'here'
+          if_mention: failure
           status: ${{ job.status }}
-          author_name: www-be
-          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
-          if_mention: failure,cancelled
+          fields: workflow,job,commit,message,ref,author,took
         env:
-          SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/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" # required
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: always()
